@@ -37,37 +37,65 @@ The frontend is built using Next.js with the following technologies:
 - React Hook Form for form handling
 - Zod for validation
 
+## Prerequisites
+
+Before you begin, ensure you have the following installed on your system:
+
+- **Go 1.17 or later**: Required for the backend
+  - [Download Go](https://golang.org/dl/)
+  - Verify installation: `go version`
+
+- **Node.js 16 or later**: Required for the frontend
+  - [Download Node.js](https://nodejs.org/)
+  - Verify installation: `node -v` and `npm -v`
+
+- **Docker and Docker Compose**: Required for the database
+  - [Install Docker](https://docs.docker.com/get-docker/)
+  - [Install Docker Compose](https://docs.docker.com/compose/install/)
+  - Verify installation: `docker --version` and `docker-compose --version`
+
 ## Setup and Installation
 
-### Prerequisites
+### 1. Database Setup
 
-- Go (1.17 or later)
-- Node.js (16 or later)
-- PostgreSQL
+First, start the PostgreSQL database using Docker Compose:
 
-### Backend Setup
+```bash
+# Navigate to the database setup directory
+cd databse_setup
 
-1. Create a PostgreSQL database:
-
-```sql
--- Note: Using the existing database 'drank' on port 5434
--- The database is already set up via docker-compose
+# Start the PostgreSQL container
+docker-compose -f postgres_docker_compose.yml up -d
 ```
 
-2. Navigate to the backend directory:
+This will start a PostgreSQL instance on port 5434 with the following credentials:
+- Database: drank
+- Username: postgres
+- Password: Demo123!
+
+You can access the Adminer database management tool at http://localhost:8070.
+
+### 2. Backend Setup
+
+1. Navigate to the backend directory:
 
 ```bash
 cd bank-app-backend
 ```
 
-3. Initialize the Swagger documentation:
+2. Install the Swagger CLI tool:
 
 ```bash
 go install github.com/swaggo/swag/cmd/swag@latest
-swag init
 ```
 
-4. Run database migrations and seed data:
+3. Initialize the Swagger documentation:
+
+```bash
+~/go/bin/swag init  # or just 'swag init' if it's in your PATH
+```
+
+4. Seed the database with initial data:
 
 ```bash
 go run main.go --seed
@@ -81,23 +109,39 @@ go run main.go
 
 The API will be available at http://localhost:8080, and Swagger documentation at http://localhost:8080/swagger/index.html.
 
-Note: The application is configured to connect to a PostgreSQL database running on port 5434 with the following credentials:
-- Database: drank
-- Username: postgres
-- Password: Demo123!
+### 3. Frontend Setup
 
-Make sure this database is running before starting the application.
+1. Navigate to the frontend directory:
 
-### Frontend Setup
+```bash
+cd bank-app-frontend
+```
 
-To set up the frontend, you would:
+2. Install dependencies:
 
-1. Navigate to the frontend directory
-2. Run `npm install` to install dependencies
-3. Create a `.env.local` file with the API URL
-4. Run `npm run dev` to start the development server
+```bash
+npm install
+```
 
-The frontend code is not yet implemented in this repository, but the structure and API services are provided in this README.
+3. Ensure the `.env.local` file exists with the API URL:
+
+```
+NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1
+```
+
+4. Start the development server:
+
+```bash
+npm run dev
+```
+
+The frontend will be available at http://localhost:3000.
+
+## Testing the Application
+
+1. Open your browser and navigate to http://localhost:3000
+2. You will be redirected to the login page
+3. Use one of the demo credentials to log in
 
 ## Demo Credentials
 
@@ -114,6 +158,12 @@ or
 Email: jane.smith@example.com
 Password: password123
 ```
+
+## Troubleshooting
+
+- **Database connection issues**: Ensure the Docker container is running with `docker ps`
+- **Swagger initialization errors**: Make sure you have the latest version of swag installed
+- **CORS errors**: Check that the frontend is connecting to the correct API URL
 
 ## API Endpoints
 

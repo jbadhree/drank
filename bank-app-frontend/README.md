@@ -19,6 +19,22 @@ This is the frontend for the Drank Banking application, built with Next.js and T
 - React Hook Form for form handling
 - Zod for validation
 
+## Prerequisites
+
+Before running the frontend, make sure you have the following installed:
+
+- **Node.js 16 or later**
+  - [Download Node.js](https://nodejs.org/)
+  - Verify installation: `node -v` and `npm -v`
+
+- **Backend API Running**
+  - The Go backend should be running at http://localhost:8080
+  - See the main project README for backend setup instructions
+
+- **PostgreSQL Database**
+  - Ensure the database is running via Docker Compose
+  - Required for the backend to function properly
+
 ## Getting Started
 
 1. Install dependencies:
@@ -37,6 +53,27 @@ npm run dev
 ```
 
 4. Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## Build for Production
+
+To create a production build:
+
+```bash
+npm run build
+```
+
+To run the production build:
+
+```bash
+npm start
+```
+
+## Project Structure
+
+- `/app` - Next.js App Router pages and layouts
+- `/components` - Reusable UI components
+- `/lib` - Utility functions, types, and API services
+- `/public` - Static assets
 
 ## Demo Credentials
 
@@ -63,3 +100,9 @@ The frontend interacts with the following API endpoints:
 - `GET /api/v1/accounts/user/:userId` - Get accounts by user ID
 - `GET /api/v1/transactions/account/:accountId` - Get transactions by account ID
 - `POST /api/v1/transactions/transfer` - Transfer money between accounts
+
+## Troubleshooting
+
+- **API Connection Issues**: Make sure the backend server is running and accessible
+- **Authentication Problems**: Try clearing localStorage and logging in again
+- **UI Rendering Issues**: Ensure you're using a supported browser (Chrome, Firefox, Safari, Edge)

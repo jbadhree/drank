@@ -1,0 +1,17 @@
+services:
+  db_test:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: Demo123!
+      POSTGRES_USER: postgres
+      POSTGRES_DB: drank
+    volumes:
+      - drankdata_test:/var/lib/postgresql/drankdata_test 
+    networks:
+      default:
+    ports:
+      - "5435:5432"  # Changed port to 5435 to avoid conflicts
+ 
+volumes:
+  drankdata_test:
