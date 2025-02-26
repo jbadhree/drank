@@ -1,0 +1,23 @@
+services:
+  db:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: Demo123!
+      POSTGRES_USER: postgres
+      POSTGRES_DB: drank
+    volumes:
+      - drankdata:/var/lib/postgresql/drankdata 
+    networks:
+      default:
+    ports:
+      - "5434:5432" 
+ 
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8070:8080
+ 
+volumes:
+  drankdata:
