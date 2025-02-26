@@ -16,7 +16,7 @@ type AccountRepository interface {
 	Update(account *models.Account) error
 	Delete(id uint) error
 	UpdateBalance(id uint, amount float64) error
-	FindByIDWithLock(id uint) (*models.Account, *gorm.DB, error)
+	FindByIDWithLock(id uint) (*models.Account, GormTx, error)
 }
 
 type accountRepository struct {
@@ -83,7 +83,7 @@ func (r *accountRepository) UpdateBalance(id uint, amount float64) error {
 	return r.db.Model(&models.Account{}).Where("id = ?", id).UpdateColumn("balance", gorm.Expr("balance + ?", amount)).Error
 }
 
-func (r *accountRepository) FindByIDWithLock(id uint) (*models.Account, *gorm.DB, error) {
+func (r *accountRepository) FindByIDWithLock(id uint) (*models.Account, GormTx, error) {
 	var account models.Account
 	tx := r.db.Begin()
 	result := tx.Set("gorm:query_option", "FOR UPDATE").First(&account, id)
@@ -94,5 +94,5 @@ func (r *accountRepository) FindByIDWithLock(id uint) (*models.Account, *gorm.DB
 		}
 		return nil, nil, result.Error
 	}
-	return &account, tx, nil
+	return &account, GormDBWrapper{tx}, nil
 }

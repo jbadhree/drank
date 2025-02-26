@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -133,7 +132,7 @@ func TestGetAllAccounts_Error(t *testing.T) {
 	
 	// Assert expectations
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
-	assert.Equal(t, "database error", response.Message)
+	assert.Equal(t, "Failed to get accounts: database error", response.Message)
 	mockAccountService.AssertExpectations(t)
 }
 
@@ -219,7 +218,7 @@ func TestGetAccountByID_InvalidID(t *testing.T) {
 	
 	// Assert expectations
 	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.Contains(t, response.Message, "invalid account ID")
+	assert.Equal(t, "Invalid ID format", response.Message)
 	mockAccountService.AssertNotCalled(t, "GetAccountByID")
 }
 
@@ -258,7 +257,7 @@ func TestGetAccountByID_NotFound(t *testing.T) {
 	
 	// Assert expectations
 	assert.Equal(t, http.StatusNotFound, w.Code)
-	assert.Equal(t, "account not found", response.Message)
+	assert.Equal(t, "Account not found: account not found", response.Message)
 	mockAccountService.AssertExpectations(t)
 }
 
@@ -341,7 +340,7 @@ func TestGetAccountsByUserID_InvalidID(t *testing.T) {
 	
 	// Assert expectations
 	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.Contains(t, response.Message, "invalid user ID")
+	assert.Equal(t, "Invalid user ID format", response.Message)
 	mockAccountService.AssertNotCalled(t, "GetAccountsByUserID")
 }
 
@@ -380,6 +379,6 @@ func TestGetAccountsByUserID_Error(t *testing.T) {
 	
 	// Assert expectations
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
-	assert.Equal(t, "database error", response.Message)
+	assert.Equal(t, "Failed to get accounts: database error", response.Message)
 	mockAccountService.AssertExpectations(t)
 }

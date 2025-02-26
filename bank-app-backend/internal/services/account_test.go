@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	"github.com/jbadhree/drank/bank-app-backend/internal/models"
+	"github.com/jbadhree/drank/bank-app-backend/internal/repository"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"gorm.io/gorm"
 )
 
 // Create a mock for the account repository
@@ -61,12 +61,12 @@ func (m *MockAccountRepository) UpdateBalance(id uint, amount float64) error {
 	return args.Error(0)
 }
 
-func (m *MockAccountRepository) FindByIDWithLock(id uint) (*models.Account, *gorm.DB, error) {
+func (m *MockAccountRepository) FindByIDWithLock(id uint) (*models.Account, repository.GormTx, error) {
 	args := m.Called(id)
 	if args.Get(0) == nil {
 		return nil, nil, args.Error(2)
 	}
-	return args.Get(0).(*models.Account), args.Get(1).(*gorm.DB), args.Error(2)
+	return args.Get(0).(*models.Account), args.Get(1).(repository.GormTx), args.Error(2)
 }
 
 func TestCreateAccount_Success(t *testing.T) {

@@ -51,7 +51,7 @@ func (m *MockUserRepository) Delete(id uint) error {
 	return args.Error(0)
 }
 
-func TestAuthenticate_Success(t *testing.T) {
+func TestAuthenticateUser_Success(t *testing.T) {
 	// Create a mock repository
 	mockRepo := new(MockUserRepository)
 	
@@ -70,7 +70,7 @@ func TestAuthenticate_Success(t *testing.T) {
 	service := NewUserService(mockRepo)
 	
 	// Call the method being tested
-	user, err := service.Authenticate("test@example.com", "password123")
+	user, err := service.AuthenticateUser("test@example.com", "password123")
 	
 	// Assert expectations
 	assert.NoError(t, err)
@@ -79,7 +79,7 @@ func TestAuthenticate_Success(t *testing.T) {
 	mockRepo.AssertExpectations(t)
 }
 
-func TestAuthenticate_InvalidCredentials(t *testing.T) {
+func TestAuthenticateUser_InvalidCredentials(t *testing.T) {
 	// Create a mock repository
 	mockRepo := new(MockUserRepository)
 	
@@ -98,16 +98,16 @@ func TestAuthenticate_InvalidCredentials(t *testing.T) {
 	service := NewUserService(mockRepo)
 	
 	// Call the method with wrong password
-	user, err := service.Authenticate("test@example.com", "wrongpassword")
+	user, err := service.AuthenticateUser("test@example.com", "wrongpassword")
 	
 	// Assert expectations
 	assert.Error(t, err)
 	assert.Nil(t, user)
-	assert.Equal(t, "invalid credentials", err.Error())
+	assert.Equal(t, "invalid email or password", err.Error())
 	mockRepo.AssertExpectations(t)
 }
 
-func TestAuthenticate_UserNotFound(t *testing.T) {
+func TestAuthenticateUser_UserNotFound(t *testing.T) {
 	// Create a mock repository
 	mockRepo := new(MockUserRepository)
 	
@@ -118,12 +118,12 @@ func TestAuthenticate_UserNotFound(t *testing.T) {
 	service := NewUserService(mockRepo)
 	
 	// Call the method
-	user, err := service.Authenticate("nonexistent@example.com", "password123")
+	user, err := service.AuthenticateUser("nonexistent@example.com", "password123")
 	
 	// Assert expectations
 	assert.Error(t, err)
 	assert.Nil(t, user)
-	assert.Equal(t, "user not found", err.Error())
+	assert.Equal(t, "invalid email or password", err.Error())
 	mockRepo.AssertExpectations(t)
 }
 

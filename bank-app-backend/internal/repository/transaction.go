@@ -14,7 +14,7 @@ type TransactionRepository interface {
 	FindAll(limit, offset int) ([]models.Transaction, error)
 	CountByAccountID(accountID uint) (int64, error)
 	CountAll() (int64, error)
-	CreateWithTx(transaction *models.Transaction, tx *gorm.DB) error
+	CreateWithTx(transaction *models.Transaction, tx GormTx) error
 }
 
 type transactionRepository struct {
@@ -95,6 +95,7 @@ func (r *transactionRepository) CountAll() (int64, error) {
 	return count, nil
 }
 
-func (r *transactionRepository) CreateWithTx(transaction *models.Transaction, tx *gorm.DB) error {
-	return tx.Create(transaction).Error
+func (r *transactionRepository) CreateWithTx(transaction *models.Transaction, tx GormTx) error {
+	result := tx.Create(transaction)
+	return result.Error()
 }

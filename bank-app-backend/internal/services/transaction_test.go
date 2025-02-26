@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/jbadhree/drank/bank-app-backend/internal/models"
+	"github.com/jbadhree/drank/bank-app-backend/internal/repository"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"gorm.io/gorm"
 )
 
 // Create a mock for the transaction repository
@@ -49,7 +49,7 @@ func (m *MockTransactionRepository) CountAll() (int64, error) {
 	return args.Get(0).(int64), args.Error(1)
 }
 
-func (m *MockTransactionRepository) CreateWithTx(transaction *models.Transaction, tx *gorm.DB) error {
+func (m *MockTransactionRepository) CreateWithTx(transaction *models.Transaction, tx repository.GormTx) error {
 	args := m.Called(transaction, tx)
 	return args.Error(0)
 }
@@ -182,6 +182,8 @@ func TestCreateTransaction_Withdrawal_InsufficientFunds(t *testing.T) {
 	// Assert expectations
 	assert.Error(t, err)
 	assert.Equal(t, "insufficient funds", err.Error())
+	
+	// Verify all mock expectations were met
 	mockAccountRepo.AssertExpectations(t)
 	// These methods should not be called
 	mockAccountRepo.AssertNotCalled(t, "Update")
@@ -327,13 +329,47 @@ func TestGetAllTransactions_Success(t *testing.T) {
 	mockTransactionRepo.AssertExpectations(t)
 }
 
+// GormDBResult implements the repository.GormResult interface
+type GormDBResult struct {
+	Err error
+}
+
+func (g GormDBResult) Error() error {
+	return g.Err
+}
+
+// MockDB implements the repository.GormTx for testing
+type MockDB struct {
+	mock.Mock
+}
+
+func (m *MockDB) Save(value interface{}) repository.GormResult {
+	m.Called(value)
+	return GormDBResult{Err: nil}
+}
+
+func (m *MockDB) Create(value interface{}) repository.GormResult {
+	m.Called(value)
+	return GormDBResult{Err: nil}
+}
+
+func (m *MockDB) Commit() repository.GormResult {
+	m.Called()
+	return GormDBResult{Err: nil}
+}
+
+func (m *MockDB) Rollback() repository.GormResult {
+	m.Called()
+	return GormDBResult{Err: nil}
+}
+
 func TestTransfer_Success(t *testing.T) {
 	// Create mock repositories
 	mockTransactionRepo := new(MockTransactionRepository)
 	mockAccountRepo := new(MockAccountRepository)
 	
-	// Mock transaction
-	mockTx := &gorm.DB{}
+	// Create mock DB transaction
+	mockTx := new(MockDB)
 	
 	// Create test accounts
 	fromAccount := &models.Account{
@@ -360,9 +396,8 @@ func TestTransfer_Success(t *testing.T) {
 	mockAccountRepo.On("FindByIDWithLock", uint(1)).Return(fromAccount, mockTx, nil)
 	mockAccountRepo.On("FindByIDWithLock", uint(2)).Return(toAccount, mockTx, nil)
 	mockTransactionRepo.On("CreateWithTx", mock.AnythingOfType("*models.Transaction"), mockTx).Return(nil).Twice()
-	mockTx.On("Save", mock.Anything).Return(mockTx)
-	mockTx.On("Commit").Return(mockTx)
-	mockTx.On("Error").Return(nil)
+	mockTx.On("Save", mock.Anything).Return(GormDBResult{Err: nil}).Twice()
+	mockTx.On("Commit").Return(GormDBResult{Err: nil}).Twice()
 	
 	// Create service with mock repos
 	service := NewTransactionService(mockTransactionRepo, mockAccountRepo)
@@ -374,6 +409,11 @@ func TestTransfer_Success(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 75.0, fromAccount.Balance)  // 100 - 25
 	assert.Equal(t, 75.0, toAccount.Balance)    // 50 + 25
+	
+	// Verify all mock expectations were met
+	mockTx.AssertExpectations(t)
+	mockAccountRepo.AssertExpectations(t)
+	mockTransactionRepo.AssertExpectations(t)
 }
 
 func TestTransfer_InsufficientFunds(t *testing.T) {
@@ -381,8 +421,8 @@ func TestTransfer_InsufficientFunds(t *testing.T) {
 	mockTransactionRepo := new(MockTransactionRepository)
 	mockAccountRepo := new(MockAccountRepository)
 	
-	// Mock transaction
-	mockTx := &gorm.DB{}
+	// Create mock DB transaction
+	mockTx := new(MockDB)
 	
 	// Create test accounts
 	fromAccount := &models.Account{
@@ -401,6 +441,8 @@ func TestTransfer_InsufficientFunds(t *testing.T) {
 	
 	// Set up expectations
 	mockAccountRepo.On("FindByIDWithLock", uint(1)).Return(fromAccount, mockTx, nil)
+	// We expect Rollback to be called since we're failing with insufficient funds
+	mockTx.On("Rollback").Return(GormDBResult{Err: nil})
 	
 	// Create service with mock repos
 	service := NewTransactionService(mockTransactionRepo, mockAccountRepo)
@@ -411,6 +453,10 @@ func TestTransfer_InsufficientFunds(t *testing.T) {
 	// Assert expectations
 	assert.Error(t, err)
 	assert.Equal(t, "insufficient funds", err.Error())
+	
+	// Verify all mock expectations were met
+	mockTx.AssertExpectations(t)
+	mockAccountRepo.AssertExpectations(t)
 }
 
 func TestTransfer_SameAccount(t *testing.T) {

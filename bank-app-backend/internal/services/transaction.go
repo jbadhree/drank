@@ -126,12 +126,14 @@ func (s *transactionService) Transfer(request *models.TransferRequest) error {
 	toAccount.Balance += request.Amount
 
 	// Save from account
-	if err := fromTx.Save(fromAccount).Error; err != nil {
+	result := fromTx.Save(fromAccount)
+	if err := result.Error(); err != nil {
 		return err
 	}
 
 	// Save to account
-	if err := toTx.Save(toAccount).Error; err != nil {
+	result = toTx.Save(toAccount)
+	if err := result.Error(); err != nil {
 		return err
 	}
 
@@ -172,13 +174,15 @@ func (s *transactionService) Transfer(request *models.TransferRequest) error {
 	}
 
 	// Commit from account transaction
-	if err := fromTx.Commit().Error; err != nil {
+	commitResult := fromTx.Commit()
+	if err := commitResult.Error(); err != nil {
 		return err
 	}
 	fromTx = nil
 
 	// Commit to account transaction
-	if err := toTx.Commit().Error; err != nil {
+	commitResult = toTx.Commit()
+	if err := commitResult.Error(); err != nil {
 		return err
 	}
 	toTx = nil

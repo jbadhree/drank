@@ -128,7 +128,7 @@ func TestGetAllTransactions_Error(t *testing.T) {
 	
 	// Assert expectations
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
-	assert.Equal(t, "database error", response.Message)
+	assert.Equal(t, "Failed to get transactions: database error", response.Message)
 	mockTransactionService.AssertExpectations(t)
 }
 
@@ -216,7 +216,7 @@ func TestGetTransactionByID_InvalidID(t *testing.T) {
 	
 	// Assert expectations
 	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.Contains(t, response.Message, "invalid transaction ID")
+	assert.Equal(t, "Invalid ID format", response.Message)
 	mockTransactionService.AssertNotCalled(t, "GetTransactionByID")
 }
 
@@ -399,6 +399,6 @@ func TestTransfer_ServiceError(t *testing.T) {
 	
 	// Assert expectations
 	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.Equal(t, "insufficient funds", response.Message)
+	assert.Equal(t, "Transfer failed: insufficient funds", response.Message)
 	mockTransactionService.AssertExpectations(t)
 }

@@ -1,0 +1,43 @@
+# Git and version control
+.git
+.gitignore
+
+# Docker files
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# OS specific files
+.DS_Store
+*.swp
+*.swo
+
+# Local binary files
+/bin
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Testing files
+**/tests/
+*_test.go
+
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Vendor directory
+/vendor
+
+# Temporary files
+/tmp
+
+# Build files
+/build

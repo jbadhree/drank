@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  # Database service
+  db:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: Demo123!
+      POSTGRES_USER: postgres
+      POSTGRES_DB: drank
+    volumes:
+      - drankdata:/var/lib/postgresql/drankdata 
+    ports:
+      - "5434:5432"
+    networks:
+      - drank-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  
+  # Database admin tool
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8070:8080
+    networks:
+      - drank-network
+    depends_on:
+      - db
+
+  # Backend service
+  backend:
+    image: jbadhree/drank:backend-latest
+    build:
+      context: ./bank-app-backend
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: Demo123!
+      DB_NAME: drank
+      PORT: 8080
+      JWT_SECRET: your-very-secret-jwt-key-change-in-production
+      SEED_DB: "true"
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - drank-network
+
+  # Frontend service
+  frontend:
+    image: jbadhree/drank:frontend-latest
+    build:
+      context: ./bank-app-frontend
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+    depends_on:
+      - backend
+    networks:
+      - drank-network
+
+volumes:
+  drankdata:
+
+networks:
+  drank-network:
+    driver: bridge

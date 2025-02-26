@@ -2,8 +2,8 @@ package unit
 
 import (
 	"github.com/jbadhree/drank/bank-app-backend/internal/models"
+	"github.com/jbadhree/drank/bank-app-backend/internal/repository"
 	"github.com/stretchr/testify/mock"
-	"gorm.io/gorm"
 )
 
 // Mock for UserRepository
@@ -98,7 +98,7 @@ func (m *MockAccountRepository) UpdateBalance(id uint, amount float64) error {
 	return args.Error(0)
 }
 
-func (m *MockAccountRepository) FindByIDWithLock(id uint) (*models.Account, *gorm.DB, error) {
+func (m *MockAccountRepository) FindByIDWithLock(id uint) (*models.Account, repository.GormTx, error) {
 	args := m.Called(id)
 	var account *models.Account
 	
@@ -120,7 +120,7 @@ func (m *MockTransactionRepository) Create(transaction *models.Transaction) erro
 	return args.Error(0)
 }
 
-func (m *MockTransactionRepository) CreateWithTx(transaction *models.Transaction, tx *gorm.DB) error {
+func (m *MockTransactionRepository) CreateWithTx(transaction *models.Transaction, tx repository.GormTx) error {
 	args := m.Called(transaction, tx)
 	return args.Error(0)
 }
@@ -153,42 +153,36 @@ func (m *MockTransactionRepository) CountAll() (int64, error) {
 	return args.Get(0).(int64), args.Error(1)
 }
 
+// MockDBResult implements repository.GormResult
+type MockDBResult struct {
+	Err error
+}
+
+func (m MockDBResult) Error() error {
+	return m.Err
+}
+
 // MockDB for transaction testing
 type MockDB struct {
 	mock.Mock
 }
 
-func (m *MockDB) Begin() *MockDB {
-	m.Called()
-	return m
-}
-
-func (m *MockDB) Rollback() *MockDB {
-	m.Called()
-	return m
-}
-
-func (m *MockDB) Commit() *MockDB {
-	m.Called()
-	return m
-}
-
-func (m *MockDB) Error() error {
-	args := m.Called()
-	return args.Error(0)
-}
-
-func (m *MockDB) Save(value interface{}) *MockDB {
+func (m *MockDB) Save(value interface{}) repository.GormResult {
 	m.Called(value)
-	return m
+	return MockDBResult{nil}
 }
 
-func (m *MockDB) Set(name string, value interface{}) *MockDB {
-	m.Called(name, value)
-	return m
+func (m *MockDB) Create(value interface{}) repository.GormResult {
+	m.Called(value)
+	return MockDBResult{nil}
 }
 
-func (m *MockDB) First(dest interface{}, conds ...interface{}) *MockDB {
-	m.Called(dest, conds)
-	return m
+func (m *MockDB) Commit() repository.GormResult {
+	m.Called()
+	return MockDBResult{nil}
+}
+
+func (m *MockDB) Rollback() repository.GormResult {
+	m.Called()
+	return MockDBResult{nil}
 }

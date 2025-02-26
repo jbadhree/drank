@@ -37,6 +37,14 @@ func (m *MockUserService) GetAllUsers() ([]models.User, error) {
 	return args.Get(0).([]models.User), args.Error(1)
 }
 
+func (m *MockUserService) GetUserByEmail(email string) (*models.User, error) {
+	args := m.Called(email)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.User), args.Error(1)
+}
+
 func (m *MockUserService) UpdateUser(user *models.User) error {
 	args := m.Called(user)
 	return args.Error(0)
@@ -47,7 +55,7 @@ func (m *MockUserService) DeleteUser(id uint) error {
 	return args.Error(0)
 }
 
-func (m *MockUserService) Authenticate(email, password string) (*models.User, error) {
+func (m *MockUserService) AuthenticateUser(email, password string) (*models.User, error) {
 	args := m.Called(email, password)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -71,7 +79,7 @@ func TestLogin_Success(t *testing.T) {
 	}
 	
 	// Set up expectations
-	mockUserService.On("Authenticate", "test@example.com", "password123").Return(testUser, nil)
+	mockUserService.On("AuthenticateUser", "test@example.com", "password123").Return(testUser, nil)
 	
 	// Create auth handler with mock service
 	jwtSecret := "test-secret-key"
@@ -118,7 +126,7 @@ func TestLogin_InvalidCredentials(t *testing.T) {
 	mockUserService := new(MockUserService)
 	
 	// Set up expectations for invalid credentials
-	mockUserService.On("Authenticate", "test@example.com", "wrongpassword").
+	mockUserService.On("AuthenticateUser", "test@example.com", "wrongpassword").
 		Return(nil, errors.New("invalid credentials"))
 	
 	// Create auth handler with mock service
@@ -152,7 +160,7 @@ func TestLogin_InvalidCredentials(t *testing.T) {
 	
 	// Assert expectations
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
-	assert.Equal(t, "invalid credentials", response.Message)
+	assert.Equal(t, "Authentication failed: invalid credentials", response.Message)
 	mockUserService.AssertExpectations(t)
 }
 
@@ -191,5 +199,5 @@ func TestLogin_InvalidRequest(t *testing.T) {
 	
 	// Assert expectations
 	assert.Equal(t, http.StatusBadRequest, w.Code)
-	mockUserService.AssertNotCalled(t, "Authenticate")
+	mockUserService.AssertNotCalled(t, "AuthenticateUser")
 }
