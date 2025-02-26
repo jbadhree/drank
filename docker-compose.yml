@@ -39,6 +39,8 @@ services:
       context: ./bank-app-backend
       dockerfile: Dockerfile
     restart: always
+    env_file:
+      - .env
     environment:
       DB_HOST: db
       DB_PORT: 5432

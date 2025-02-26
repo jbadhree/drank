@@ -29,7 +29,8 @@ WORKDIR /root/
 
 # Copy the binary from the builder stage
 COPY --from=builder /app/drank-backend .
-COPY --from=builder /app/.env .
+# Not copying .env file as it should be provided through docker-compose
+# COPY --from=builder /app/.env .
 COPY --from=builder /app/startup.sh .
 
 # Make the startup script executable
