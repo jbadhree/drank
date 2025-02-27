@@ -40,9 +40,9 @@ COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 
-# Copy both API URL replacement scripts
-COPY replace-api-url.sh fix-api-url.sh /app/
-RUN chmod +x /app/replace-api-url.sh /app/fix-api-url.sh
+# Copy the startup script
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
 
 # Expose the port the app will run on
 EXPOSE 3000
@@ -50,5 +50,5 @@ EXPOSE 3000
 # Default environment variable for backend API URL
 ENV NEXT_PUBLIC_API_URL=http://localhost:8080
 
-# Create an inline command to replace localhost URLs and start the app
-CMD ["sh", "-c", "echo \"==== Running API URL replacement ==== \"; SERVER_URL=\"${NEXT_PUBLIC_API_URL:-http://localhost:8080}\"; echo \"Setting API URL to: $SERVER_URL\"; find /app/.next -type f -name \"*.js\" | xargs grep -l \"http://localhost:8080\" | xargs sed -i.bak \"s|http://localhost:8080|$SERVER_URL|g\" 2>/dev/null || true; echo \"==== Replacement complete ==== \"; exec npm start"]
+# Use a simple shell command that should work on all platforms
+CMD ["/bin/sh", "/app/start.sh"]
