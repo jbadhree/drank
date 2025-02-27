@@ -72,7 +72,7 @@ services:
       - "3000:3000"
     environment:
       # Set this to the publicly accessible URL of your server
-      NEXT_PUBLIC_API_URL: ${HOST_IP}
+      NEXT_PUBLIC_API_URL: ${BACKEND_URL}
     depends_on:
       - backend
     networks:
