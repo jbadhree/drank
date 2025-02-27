@@ -1,5 +1,4 @@
 import axios from 'axios';
-import getConfig from 'next/config';
 import { 
   LoginRequest, 
   LoginResponse, 
@@ -9,13 +8,17 @@ import {
   TransferRequest 
 } from './types';
 
-// Get runtime config
-const { publicRuntimeConfig } = getConfig() || {};
+// Get API URL from environment variable with a localhost fallback
+let baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
-// Get API URL from runtime config or fall back to environment variable
-let baseUrl = publicRuntimeConfig?.apiUrl || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+// Check if API_URL already includes /api/v1, if not append it
 if (!baseUrl.endsWith('/api/v1')) {
   baseUrl += '/api/v1';
+}
+
+// Log the API URL for debugging
+if (typeof window !== 'undefined') {
+  console.log('API URL:', baseUrl);
 }
 
 const API_URL = baseUrl;

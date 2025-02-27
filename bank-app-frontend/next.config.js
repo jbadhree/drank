@@ -1,10 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // This allows passing runtime environment variables
-  publicRuntimeConfig: {
-    apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080',
-  },
+  // Force NextJS to read environment variables at runtime rather than build time
+  experimental: {
+    forceSwcTransforms: true,
+  }
 }
 
 module.exports = nextConfig

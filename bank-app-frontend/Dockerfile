@@ -40,6 +40,10 @@ COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 
+# Copy the startup script
+COPY docker-startup.sh /app/docker-startup.sh
+RUN chmod +x /app/docker-startup.sh
+
 # Expose the port the app will run on
 EXPOSE 3000
 
@@ -47,5 +51,5 @@ EXPOSE 3000
 # This will be overridden by docker-compose environment settings
 ENV NEXT_PUBLIC_API_URL=http://localhost:8080
 
-# Start the application
-CMD ["npm", "start"]
+# Start the application using our custom script
+CMD ["/app/docker-startup.sh"]

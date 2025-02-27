@@ -61,6 +61,7 @@ services:
   # Frontend service
   frontend:
     image: jbadhree/drank:frontend-latest
+    pull_policy: always  # Always pull the latest image
     build:
       context: ./bank-app-frontend
       dockerfile: Dockerfile
