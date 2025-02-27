@@ -8,20 +8,13 @@ import {
   TransferRequest 
 } from './types';
 
-// Get API URL from environment variable with a localhost fallback
-let baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+// Hardcoded default API URL that will be replaced at container startup
+const API_URL = 'http://localhost:8080/api/v1';
 
-// Check if API_URL already includes /api/v1, if not append it
-if (!baseUrl.endsWith('/api/v1')) {
-  baseUrl += '/api/v1';
-}
-
-// Log the API URL for debugging
+// Log it to help with debugging
 if (typeof window !== 'undefined') {
-  console.log('API URL:', baseUrl);
+  console.log('API_URL:', API_URL);
 }
-
-const API_URL = baseUrl;
 
 const api = axios.create({
   baseURL: API_URL,
