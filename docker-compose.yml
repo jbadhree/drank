@@ -27,6 +27,11 @@ services:
     restart: always
     ports:
       - 8070:8080
+    environment:
+      # Force IPv4 listening
+      ADMINER_DESIGN: 'pappu687'
+      ADMINER_DEFAULT_SERVER: 'db'
+    command: php -S 0.0.0.0:8080 -t /var/www/html
     networks:
       - drank-network
     depends_on:
