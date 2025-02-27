@@ -19,7 +19,8 @@ export default function HomePage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="text-center">
-        <h1 className="text-3xl font-bold text-primary-600">Drank Banking</h1>
+        <h1 className="text-3xl font-bold text-primary-600">ByteBank</h1>
+        <p className="mt-2 text-gray-600">A tech-driven financial institution</p>
         <p className="mt-2 text-gray-600">Redirecting you to the appropriate page...</p>
       </div>
     </div>
