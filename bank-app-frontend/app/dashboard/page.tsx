@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth';
 import { getAccountsByUserID, getTransactionsByAccountID } from '@/lib/api';
 import { Account, Transaction } from '@/lib/types';
 import NavBar from '@/components/NavBar';
+import ApiInfoWrapper from '@/components/ApiInfoWrapper';
 import AccountCard from '@/components/AccountCard';
 import TransactionItem from '@/components/TransactionItem';
 import TransferModal from '@/components/TransferModal';
@@ -112,6 +113,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <NavBar />
+      <ApiInfoWrapper />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="md:flex md:justify-between md:items-center mb-6">

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import getConfig from 'next/config';
 import { 
   LoginRequest, 
   LoginResponse, 
@@ -8,7 +9,16 @@ import {
   TransferRequest 
 } from './types';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+// Get runtime config
+const { publicRuntimeConfig } = getConfig() || {};
+
+// Get API URL from runtime config or fall back to environment variable
+let baseUrl = publicRuntimeConfig?.apiUrl || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+if (!baseUrl.endsWith('/api/v1')) {
+  baseUrl += '/api/v1';
+}
+
+const API_URL = baseUrl;
 
 const api = axios.create({
   baseURL: API_URL,
