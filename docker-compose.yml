@@ -68,11 +68,9 @@ services:
     restart: always
     ports:
       - "3000:3000"
-    # Use a command to override the default CMD in the Dockerfile
-    command: ["/bin/sh", "-c", "/app/replace-api-url.sh"]
     environment:
       # Set this to the publicly accessible URL of your server
-      NEXT_PUBLIC_API_URL: ${HOST_IP:-http://localhost}:8080
+      NEXT_PUBLIC_API_URL: ${HOST_IP}
     depends_on:
       - backend
     networks:
