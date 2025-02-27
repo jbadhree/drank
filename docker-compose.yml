@@ -50,6 +50,8 @@ services:
       PORT: 8080
       JWT_SECRET: your-very-secret-jwt-key-change-in-production
       SEED_DB: "true"
+      # Set frontend URL for CORS
+      FRONTEND_URL: ${FRONTEND_URL}
     ports:
       - "8080:8080"
     depends_on:
