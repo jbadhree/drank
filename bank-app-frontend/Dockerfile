@@ -43,8 +43,9 @@ COPY --from=builder /app/package.json ./package.json
 # Expose the port the app will run on
 EXPOSE 3000
 
-# Define environment variable for backend API URL
-ENV NEXT_PUBLIC_API_URL=http://backend:8080
+# Default environment variable for backend API URL
+# This will be overridden by docker-compose environment settings
+ENV NEXT_PUBLIC_API_URL=http://localhost:8080
 
 # Start the application
 CMD ["npm", "start"]

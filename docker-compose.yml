@@ -68,7 +68,8 @@ services:
     ports:
       - "3000:3000"
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8080
+      # Use the HOST_IP environment variable or default to localhost
+      NEXT_PUBLIC_API_URL: ${HOST_IP:-http://localhost}:8080
     depends_on:
       - backend
     networks:
