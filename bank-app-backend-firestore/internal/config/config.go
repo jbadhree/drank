@@ -1,0 +1,37 @@
+package config
+
+import (
+	"os"
+	"strconv"
+)
+
+// Config - Application configuration
+type Config struct {
+	Port               int
+	FirebaseProjectID  string
+	FirestoreEmulator  string
+	AuthEmulator       string
+	JWTSecret          string
+}
+
+// New - Create a new configuration
+func New() *Config {
+	port, _ := strconv.Atoi(getEnv("PORT", "8080"))
+	
+	return &Config{
+		Port:               port,
+		FirebaseProjectID:  getEnv("FIREBASE_PROJECT_ID", "drank-firebase"),
+		FirestoreEmulator:  getEnv("FIRESTORE_EMULATOR_HOST", "localhost:8090"),
+		AuthEmulator:       getEnv("FIREBASE_AUTH_EMULATOR_HOST", "localhost:9099"),
+		JWTSecret:          getEnv("JWT_SECRET", "your-very-secret-jwt-key-change-in-production"),
+	}
+}
+
+// getEnv - Get environment variable or default value
+func getEnv(key, defaultValue string) string {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue
+	}
+	return value
+}

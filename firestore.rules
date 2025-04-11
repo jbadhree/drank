@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users collection
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Accounts collection
+    match /accounts/{accountId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && 
+        request.resource.data.userId == request.auth.uid;
+    }
+    
+    // Transactions collection
+    match /transactions/{transactionId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      // Only allow updates and deletes if the user owns the account
+      allow update, delete: if request.auth != null && exists(/databases/$(database)/documents/accounts/$(resource.data.accountId)) &&
+        get(/databases/$(database)/documents/accounts/$(resource.data.accountId)).data.userId == request.auth.uid;
+    }
+  }
+}
