@@ -10,21 +10,27 @@ import (
 	"syscall"
 	"time"
 
+	"cloud.google.com/go/firestore"
+	"google.golang.org/api/option"
+
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 
-	"github.com/jbadhree/drank/bank-app-backend-firestore/internal/config"
-	"github.com/jbadhree/drank/bank-app-backend-firestore/internal/handlers"
-	"github.com/jbadhree/drank/bank-app-backend-firestore/internal/middleware"
-	"github.com/jbadhree/drank/bank-app-backend-firestore/internal/repository"
-	"github.com/jbadhree/drank/bank-app-backend-firestore/internal/services"
-	"github.com/jbadhree/drank/bank-app-backend-firestore/seed"
+	_ "github.com/jbadhree/drank/bank-app-backend/docs" // This is for swagger
+	"github.com/jbadhree/drank/bank-app-backend/internal/config"
+	"github.com/jbadhree/drank/bank-app-backend/internal/handlers"
+	"github.com/jbadhree/drank/bank-app-backend/internal/middleware"
+	"github.com/jbadhree/drank/bank-app-backend/internal/repository"
+	"github.com/jbadhree/drank/bank-app-backend/internal/services"
+	"github.com/jbadhree/drank/bank-app-backend/seed"
 )
 
-// @title           Banking API (Firestore)
+// @title           Banking API
 // @version         1.0
-// @description     A demo banking application API using Firestore
+// @description     A demo banking application API
 // @termsOfService  http://swagger.io/terms/
 
 // @contact.name   API Support
@@ -51,27 +57,38 @@ func main() {
 	// Configure the application
 	cfg := config.New()
 
-	// Initialize Firebase client
-	firebase, err := config.NewFirebaseClient(cfg)
-	if err != nil {
-		log.Fatalf("Failed to initialize Firebase: %v", err)
+	// Initialize Firestore client
+	ctx := context.Background()
+	projectID := cfg.FirestoreProjectID
+	if projectID == "" {
+		log.Fatal("FIREBASE_PROJECT_ID environment variable is required")
 	}
-	defer firebase.Close()
+	if cfg.FirestoreCredsPath == "" {
+		log.Fatal("FIREBASE_CREDENTIALS_PATH environment variable is required")
+	}
 
-	// Check if seed flag is provided
+	// Use the credentials file to authenticate
+	firestoreOptions := option.WithCredentialsFile(cfg.FirestoreCredsPath)
+	firestoreClient, err := firestore.NewClient(ctx, projectID, firestoreOptions)
+	if err != nil {
+		log.Fatalf("Failed to connect to Firestore: %v", err)
+	}
+	defer firestoreClient.Close()
+
+	// Check if seed flag is provided (Firestore seeding not implemented here)
 	if len(os.Args) > 1 && os.Args[1] == "--seed" {
-		log.Println("Seeding database...")
-		if err := seed.SeedDatabase(firebase.Firestore); err != nil {
+		// log.Println("Firestore seeding is not implemented in this main.go. Please use a Firestore-specific seed script if needed.")
+		if err := seed.SeedDatabase(firestoreClient); err != nil {
 			log.Fatalf("Failed to seed database: %v", err)
 		}
-		log.Println("Database seeded successfully")
+		log.Println("Firestore database seeded successfully")
 		return
 	}
 
 	// Initialize repositories
-	userRepo := repository.NewUserRepository(firebase.Firestore)
-	accountRepo := repository.NewAccountRepository(firebase.Firestore)
-	transactionRepo := repository.NewTransactionRepository(firebase.Firestore)
+	userRepo := repository.NewUserRepository(firestoreClient)
+	accountRepo := repository.NewAccountRepository(firestoreClient)
+	transactionRepo := repository.NewTransactionRepository(firestoreClient)
 
 	// Initialize services
 	userService := services.NewUserService(userRepo)
@@ -91,7 +108,6 @@ func main() {
 	router := gin.Default()
 
 	// Configure CORS - allow requests from both localhost and the actual server hostname
-	// Get frontend URL from environment or use default
 	frontendURL := os.Getenv("FRONTEND_URL")
 	allowedOrigins := []string{"http://localhost:3000"}
 	if frontendURL != "" {
@@ -107,12 +123,14 @@ func main() {
 		MaxAge:           12 * time.Hour,
 	}))
 
+	// Swagger documentation
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
 	// API routes
 	v1 := router.Group("/api/v1")
 	{
 		// Auth routes - no auth required
 		v1.POST("/auth/login", authHandler.Login)
-		v1.POST("/auth/register", authHandler.Register)
 
 		// User routes - auth required
 		users := v1.Group("/users")
@@ -130,7 +148,6 @@ func main() {
 			accounts.GET("", accountHandler.GetAllAccounts)
 			accounts.GET("/:id", accountHandler.GetAccountByID)
 			accounts.GET("/user/:userId", accountHandler.GetAccountsByUserID)
-			accounts.POST("", accountHandler.CreateAccount)
 		}
 
 		// Transaction routes - auth required
@@ -141,14 +158,12 @@ func main() {
 			transactions.GET("/:id", transactionHandler.GetTransactionByID)
 			transactions.GET("/account/:accountId", transactionHandler.GetTransactionsByAccountID)
 			transactions.POST("/transfer", transactionHandler.Transfer)
-			transactions.POST("/deposit", transactionHandler.CreateDeposit)
-			transactions.POST("/withdrawal", transactionHandler.CreateWithdrawal)
 		}
 	}
 
 	// Start server
 	srv := &http.Server{
-		Addr:    fmt.Sprintf(":%d", cfg.Port),
+		Addr:    fmt.Sprintf(":%s", cfg.Port),
 		Handler: router,
 	}
 
@@ -165,9 +180,9 @@ func main() {
 	<-quit
 	log.Println("Shutting down server...")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctxShutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if err := srv.Shutdown(ctx); err != nil {
+	if err := srv.Shutdown(ctxShutdown); err != nil {
 		log.Fatal("Server forced to shutdown:", err)
 	}
 

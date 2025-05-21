@@ -1,35 +1,40 @@
 package config
 
 import (
+	"log"
 	"os"
-	"strconv"
 )
 
-// Config - Application configuration
 type Config struct {
-	Port               int
-	FirebaseProjectID  string
-	FirestoreEmulator  string
-	AuthEmulator       string
-	JWTSecret          string
+	DBType string // "postgres" or "firestore"
+	// Postgres config
+	DBHost     string
+	DBPort     int
+	DBUser     string
+	DBPassword string
+	DBName     string
+	// Firestore config
+	FirestoreProjectID string
+	FirestoreCredsPath string
+	// Common
+	Port      string
+	JWTSecret string
 }
 
-// New - Create a new configuration
 func New() *Config {
-	port, _ := strconv.Atoi(getEnv("PORT", "8080"))
-	
+
 	return &Config{
-		Port:               port,
-		FirebaseProjectID:  getEnv("FIREBASE_PROJECT_ID", "drank-firebase"),
-		FirestoreEmulator:  getEnv("FIRESTORE_EMULATOR_HOST", "localhost:8090"),
-		AuthEmulator:       getEnv("FIREBASE_AUTH_EMULATOR_HOST", "localhost:9099"),
-		JWTSecret:          getEnv("JWT_SECRET", "your-very-secret-jwt-key-change-in-production"),
+		DBType:             getEnv("DB_TYPE", "firestore"),
+		FirestoreProjectID: getEnv("FIRESTORE_PROJECT_ID", ""),
+		FirestoreCredsPath: getEnv("FIRESTORE_CREDS_PATH", ""),
+		JWTSecret:          getEnv("JWT_SECRET", "your-secret-key"),
+		Port:               getEnv("PORT", "8080"),
 	}
 }
 
-// getEnv - Get environment variable or default value
-func getEnv(key, defaultValue string) string {
+func getEnv(key string, defaultValue string) string {
 	value := os.Getenv(key)
+	log.Println("key:", key, "value:", value)
 	if value == "" {
 		return defaultValue
 	}

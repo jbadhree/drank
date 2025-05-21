@@ -6,8 +6,12 @@ import { Account } from '@/lib/types';
 import { transferMoney } from '@/lib/api';
 
 const transferSchema = z.object({
-  fromAccountId: z.number().min(1, 'Source account is required'),
-  toAccountId: z.number().min(1, 'Destination account is required'),
+  // fromAccountId: z.number().min(1, 'Source account is required'),
+  // toAccountId: z.number().min(1, 'Destination account is required'),
+  fromAccountId: z.string(),
+  // .min(1, 'Source account is required'),
+  toAccountId: z.string(),
+  // .min(1, 'Destination account is required'),
   amount: z.number().min(0.01, 'Amount must be greater than 0'),
   description: z.string().min(3, 'Description must be at least 3 characters')
 }).refine(data => data.fromAccountId !== data.toAccountId, {
@@ -24,30 +28,31 @@ interface TransferModalProps {
 }
 
 const TransferModal = ({ accounts, onClose, onSuccess }: TransferModalProps) => {
+  console.log('TransferModal accounts:', accounts);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const { register, handleSubmit, formState: { errors }, watch } = useForm<TransferFormData>({
     resolver: zodResolver(transferSchema),
     defaultValues: {
-      fromAccountId: accounts.length > 0 ? accounts[0].id : 0,
-      toAccountId: accounts.length > 1 ? accounts[1].id : 0,
+      fromAccountId: accounts.length > 0 ? accounts[0].id : '0',
+      toAccountId: accounts.length > 1 ? accounts[1].id : '0',
       amount: 0,
       description: ''
     }
   });
 
   const fromAccountId = watch('fromAccountId');
-  const selectedFromAccount = accounts.find(a => a.id === Number(fromAccountId));
-  
+  const selectedFromAccount = accounts.find(a => a.id === fromAccountId);
+
   const onSubmit = async (data: TransferFormData) => {
     setIsSubmitting(true);
     setError(null);
-    
+
     try {
       await transferMoney({
-        fromAccountId: Number(data.fromAccountId),
-        toAccountId: Number(data.toAccountId),
+        fromAccountId: data.fromAccountId,
+        toAccountId: data.toAccountId,
         amount: Number(data.amount),
         description: data.description
       });
@@ -64,7 +69,7 @@ const TransferModal = ({ accounts, onClose, onSuccess }: TransferModalProps) => 
       <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-gray-800">Transfer Money</h2>
-          <button 
+          <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600"
           >
@@ -73,20 +78,20 @@ const TransferModal = ({ accounts, onClose, onSuccess }: TransferModalProps) => 
             </svg>
           </button>
         </div>
-        
+
         {error && (
           <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">
             {error}
           </div>
         )}
-        
+
         <form onSubmit={handleSubmit(onSubmit)}>
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-medium mb-2">
               From Account
             </label>
-            <select 
-              {...register('fromAccountId', { valueAsNumber: true })}
+            <select
+              {...register('fromAccountId')}
               className="input"
             >
               {accounts.map(account => (
@@ -99,13 +104,13 @@ const TransferModal = ({ accounts, onClose, onSuccess }: TransferModalProps) => 
               <p className="mt-1 text-sm text-red-600">{errors.fromAccountId.message}</p>
             )}
           </div>
-          
+
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-medium mb-2">
               To Account
             </label>
-            <select 
-              {...register('toAccountId', { valueAsNumber: true })}
+            <select
+              {...register('toAccountId')}
               className="input"
             >
               {accounts.map(account => (
@@ -118,13 +123,13 @@ const TransferModal = ({ accounts, onClose, onSuccess }: TransferModalProps) => 
               <p className="mt-1 text-sm text-red-600">{errors.toAccountId.message}</p>
             )}
           </div>
-          
+
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-medium mb-2">
               Amount
             </label>
-            <input 
-              type="number" 
+            <input
+              type="number"
               step="0.01"
               {...register('amount', { valueAsNumber: true })}
               className="input"
@@ -139,13 +144,13 @@ const TransferModal = ({ accounts, onClose, onSuccess }: TransferModalProps) => 
               </p>
             )}
           </div>
-          
+
           <div className="mb-6">
             <label className="block text-gray-700 text-sm font-medium mb-2">
               Description
             </label>
-            <input 
-              type="text" 
+            <input
+              type="text"
               {...register('description')}
               className="input"
               placeholder="What's this transfer for?"
@@ -154,7 +159,7 @@ const TransferModal = ({ accounts, onClose, onSuccess }: TransferModalProps) => 
               <p className="mt-1 text-sm text-red-600">{errors.description.message}</p>
             )}
           </div>
-          
+
           <div className="flex justify-end">
             <button
               type="button"

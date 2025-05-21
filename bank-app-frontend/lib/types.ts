@@ -1,5 +1,5 @@
 export interface User {
-  id: number;
+  id: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -13,8 +13,8 @@ export enum AccountType {
 }
 
 export interface Account {
-  id: number;
-  userId: number;
+  id: string;
+  userId: string;
   accountNumber: string;
   accountType: AccountType;
   balance: number;
@@ -29,10 +29,10 @@ export enum TransactionType {
 }
 
 export interface Transaction {
-  id: number;
-  accountId: number;
-  sourceAccountId?: number;
-  targetAccountId?: number;
+  id: string;
+  accountId: string;
+  sourceAccountId?: string;
+  targetAccountId?: string;
   amount: number;
   balance: number;
   type: TransactionType;
@@ -53,8 +53,8 @@ export interface LoginResponse {
 }
 
 export interface TransferRequest {
-  fromAccountId: number;
-  toAccountId: number;
+  fromAccountId: string;
+  toAccountId: string;
   amount: number;
   description: string;
 }

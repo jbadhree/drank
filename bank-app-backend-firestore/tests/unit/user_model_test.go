@@ -4,17 +4,84 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jbadhree/drank/bank-app-backend-firestore/internal/models"
+	"github.com/jbadhree/drank/bank-app-backend/internal/models"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 func TestUserModel(t *testing.T) {
-	t.Run("User.ToDTO should convert User to UserDTO", func(t *testing.T) {
+	t.Run("BeforeSave should hash password", func(t *testing.T) {
+		// Arrange
+		user := &models.User{
+			Email:     "test@example.com",
+			Password:  "password123",
+			FirstName: "Test",
+			LastName:  "User",
+		}
+
+		// Act
+		err := user.BeforeSave(&gorm.DB{})
+
+		// Assert
+		assert.NoError(t, err)
+		assert.NotEqual(t, "password123", user.Password)
+		// Verify it's a valid bcrypt hash
+		err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte("password123"))
+		assert.NoError(t, err)
+	})
+
+	t.Run("BeforeSave should not hash empty password", func(t *testing.T) {
+		// Arrange
+		user := &models.User{
+			Email:     "test@example.com",
+			Password:  "",
+			FirstName: "Test",
+			LastName:  "User",
+		}
+
+		// Act
+		err := user.BeforeSave(&gorm.DB{})
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Equal(t, "", user.Password)
+	})
+
+	t.Run("ComparePassword should verify correct password", func(t *testing.T) {
+		// Arrange
+		password := "password123"
+		hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		user := &models.User{
+			Password: string(hash),
+		}
+
+		// Act
+		err := user.ComparePassword(password)
+
+		// Assert
+		assert.NoError(t, err)
+	})
+
+	t.Run("ComparePassword should reject incorrect password", func(t *testing.T) {
+		// Arrange
+		hash, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
+		user := &models.User{
+			Password: string(hash),
+		}
+
+		// Act
+		err := user.ComparePassword("wrongpassword")
+
+		// Assert
+		assert.Error(t, err)
+	})
+
+	t.Run("ToDTO should convert User to UserDTO", func(t *testing.T) {
 		// Arrange
 		now := time.Now()
-		user := models.User{
-			ID:        "user123",
+		user := &models.User{
+			ID:        1,
 			Email:     "test@example.com",
 			Password:  "hashedpassword",
 			FirstName: "Test",
@@ -27,59 +94,11 @@ func TestUserModel(t *testing.T) {
 		dto := user.ToDTO()
 
 		// Assert
-		assert.Equal(t, user.ID, dto.ID)
-		assert.Equal(t, user.Email, dto.Email)
-		assert.Equal(t, user.FirstName, dto.FirstName)
-		assert.Equal(t, user.LastName, dto.LastName)
-		assert.Equal(t, user.CreatedAt, dto.CreatedAt)
-		assert.Equal(t, user.UpdatedAt, dto.UpdatedAt)
-		// Password should not be included in DTO
-		assert.Empty(t, "", "DTO should not contain password")
-	})
-
-	t.Run("GeneratePasswordHash should hash password", func(t *testing.T) {
-		// Arrange
-		password := "test123"
-
-		// Act
-		hash, err := models.GeneratePasswordHash(password)
-
-		// Assert
-		assert.NoError(t, err)
-		assert.NotEqual(t, password, hash)
-		
-		// Verify that the hash can be compared to original password
-		err = bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
-		assert.NoError(t, err)
-	})
-
-	t.Run("ComparePassword should return nil for correct password", func(t *testing.T) {
-		// Arrange
-		password := "test123"
-		hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-		user := models.User{
-			Password: string(hash),
-		}
-
-		// Act
-		err := user.ComparePassword(password)
-
-		// Assert
-		assert.NoError(t, err)
-	})
-
-	t.Run("ComparePassword should return error for incorrect password", func(t *testing.T) {
-		// Arrange
-		password := "test123"
-		hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-		user := models.User{
-			Password: string(hash),
-		}
-
-		// Act
-		err := user.ComparePassword("wrongpassword")
-
-		// Assert
-		assert.Error(t, err)
+		assert.Equal(t, uint(1), dto.ID)
+		assert.Equal(t, "test@example.com", dto.Email)
+		assert.Equal(t, "Test", dto.FirstName)
+		assert.Equal(t, "User", dto.LastName)
+		assert.Equal(t, now, dto.CreatedAt)
+		assert.Equal(t, now, dto.UpdatedAt)
 	})
 }

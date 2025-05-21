@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/jbadhree/drank/bank-app-backend-firestore/internal/models"
+	"github.com/jbadhree/drank/bank-app-backend/internal/models"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -14,9 +14,8 @@ func TestAuthAPI(t *testing.T) {
 	SetupTest(t)
 	
 	// Create a test user for authentication tests
-	user, err := CreateTestUser("auth@example.com", "password123", "Auth", "User")
+	_, err := CreateTestUser("auth@example.com", "password123", "Auth", "User")
 	assert.NoError(t, err)
-	assert.NotEmpty(t, user.ID)
 	
 	t.Run("Login with valid credentials should succeed", func(t *testing.T) {
 		// Arrange
@@ -60,7 +59,7 @@ func TestAuthAPI(t *testing.T) {
 		assert.NoError(t, err)
 		
 		// Verify error message
-		assert.Contains(t, response["error"], "Invalid credentials")
+		assert.Contains(t, response["message"], "invalid email or password")
 	})
 	
 	t.Run("Login with incorrect password should fail", func(t *testing.T) {
@@ -81,56 +80,27 @@ func TestAuthAPI(t *testing.T) {
 		assert.NoError(t, err)
 		
 		// Verify error message
-		assert.Contains(t, response["error"], "Invalid credentials")
+		assert.Contains(t, response["message"], "invalid email or password")
 	})
 	
-	t.Run("Register a new user should succeed", func(t *testing.T) {
-		// Arrange
-		registerReq := models.User{
-			Email:     "newuser@example.com",
-			Password:  "password123",
-			FirstName: "New",
-			LastName:  "User",
+	t.Run("Login with invalid format should fail", func(t *testing.T) {
+		// Arrange - Missing password
+		loginReq := map[string]string{
+			"email": "auth@example.com",
 		}
 		
 		// Act
-		w := MakeRequest("POST", "/api/v1/auth/register", registerReq, "")
-		
-		// Assert
-		assert.Equal(t, http.StatusCreated, w.Code)
-		
-		var response models.UserDTO
-		err := json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
-		
-		// Verify response
-		assert.NotEmpty(t, response.ID)
-		assert.Equal(t, "newuser@example.com", response.Email)
-		assert.Equal(t, "New", response.FirstName)
-		assert.Equal(t, "User", response.LastName)
-	})
-	
-	t.Run("Register with existing email should fail", func(t *testing.T) {
-		// Arrange
-		registerReq := models.User{
-			Email:     "auth@example.com", // Already exists
-			Password:  "password123",
-			FirstName: "Another",
-			LastName:  "User",
-		}
-		
-		// Act
-		w := MakeRequest("POST", "/api/v1/auth/register", registerReq, "")
+		w := MakeRequest("POST", "/api/v1/auth/login", loginReq, "")
 		
 		// Assert
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 		
-		var response map[string]string
+		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
 		
-		// Verify error message about email already existing
-		assert.Contains(t, response["error"], "already exists")
+		// Verify there is an error message
+		assert.Contains(t, response, "message")
 	})
 	
 	t.Run("Access protected routes without token should fail", func(t *testing.T) {
@@ -145,7 +115,7 @@ func TestAuthAPI(t *testing.T) {
 		assert.NoError(t, err)
 		
 		// Verify some error message is returned
-		assert.NotEmpty(t, response["error"])
+		assert.NotEmpty(t, response["message"])
 	})
 	
 	t.Run("Access protected routes with invalid token should fail", func(t *testing.T) {
@@ -160,7 +130,7 @@ func TestAuthAPI(t *testing.T) {
 		assert.NoError(t, err)
 		
 		// Verify some error message is returned
-		assert.NotEmpty(t, response["error"])
+		assert.NotEmpty(t, response["message"])
 	})
 	
 	t.Run("Access protected routes with valid token should succeed", func(t *testing.T) {

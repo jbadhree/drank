@@ -1,32 +1,35 @@
 package unit
 
 import (
-	"github.com/jbadhree/drank/bank-app-backend-firestore/internal/models"
-	"github.com/jbadhree/drank/bank-app-backend-firestore/internal/repository/interfaces"
+	"github.com/jbadhree/drank/bank-app-backend/internal/models"
+	"github.com/jbadhree/drank/bank-app-backend/internal/repository"
 	"github.com/stretchr/testify/mock"
 )
 
-// MockUserRepository implements the UserRepository interface for testing
+// Mock for UserRepository
 type MockUserRepository struct {
 	mock.Mock
 }
 
-// Ensure MockUserRepository implements UserRepository interface
-var _ interfaces.UserRepository = (*MockUserRepository)(nil)
-
-func (m *MockUserRepository) Create(user models.User) (models.User, error) {
+func (m *MockUserRepository) Create(user *models.User) error {
 	args := m.Called(user)
-	return args.Get(0).(models.User), args.Error(1)
+	return args.Error(0)
 }
 
-func (m *MockUserRepository) FindByID(id string) (models.User, error) {
+func (m *MockUserRepository) FindByID(id uint) (*models.User, error) {
 	args := m.Called(id)
-	return args.Get(0).(models.User), args.Error(1)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.User), args.Error(1)
 }
 
-func (m *MockUserRepository) FindByEmail(email string) (models.User, error) {
+func (m *MockUserRepository) FindByEmail(email string) (*models.User, error) {
 	args := m.Called(email)
-	return args.Get(0).(models.User), args.Error(1)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.User), args.Error(1)
 }
 
 func (m *MockUserRepository) FindAll() ([]models.User, error) {
@@ -34,42 +37,45 @@ func (m *MockUserRepository) FindAll() ([]models.User, error) {
 	return args.Get(0).([]models.User), args.Error(1)
 }
 
-func (m *MockUserRepository) Update(user models.User) (models.User, error) {
+func (m *MockUserRepository) Update(user *models.User) error {
 	args := m.Called(user)
-	return args.Get(0).(models.User), args.Error(1)
+	return args.Error(0)
 }
 
-func (m *MockUserRepository) Delete(id string) error {
+func (m *MockUserRepository) Delete(id uint) error {
 	args := m.Called(id)
 	return args.Error(0)
 }
 
-// MockAccountRepository implements the AccountRepository interface for testing
+// Mock for AccountRepository
 type MockAccountRepository struct {
 	mock.Mock
 }
 
-// Ensure MockAccountRepository implements AccountRepository interface
-var _ interfaces.AccountRepository = (*MockAccountRepository)(nil)
-
-func (m *MockAccountRepository) Create(account models.Account) (models.Account, error) {
+func (m *MockAccountRepository) Create(account *models.Account) error {
 	args := m.Called(account)
-	return args.Get(0).(models.Account), args.Error(1)
+	return args.Error(0)
 }
 
-func (m *MockAccountRepository) FindByID(id string) (models.Account, error) {
+func (m *MockAccountRepository) FindByID(id uint) (*models.Account, error) {
 	args := m.Called(id)
-	return args.Get(0).(models.Account), args.Error(1)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.Account), args.Error(1)
 }
 
-func (m *MockAccountRepository) FindByUserID(userID string) ([]models.Account, error) {
+func (m *MockAccountRepository) FindByUserID(userID uint) ([]models.Account, error) {
 	args := m.Called(userID)
 	return args.Get(0).([]models.Account), args.Error(1)
 }
 
-func (m *MockAccountRepository) FindByAccountNumber(accountNumber string) (models.Account, error) {
+func (m *MockAccountRepository) FindByAccountNumber(accountNumber string) (*models.Account, error) {
 	args := m.Called(accountNumber)
-	return args.Get(0).(models.Account), args.Error(1)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.Account), args.Error(1)
 }
 
 func (m *MockAccountRepository) FindAll() ([]models.Account, error) {
@@ -77,60 +83,106 @@ func (m *MockAccountRepository) FindAll() ([]models.Account, error) {
 	return args.Get(0).([]models.Account), args.Error(1)
 }
 
-func (m *MockAccountRepository) Update(account models.Account) (models.Account, error) {
+func (m *MockAccountRepository) Update(account *models.Account) error {
 	args := m.Called(account)
-	return args.Get(0).(models.Account), args.Error(1)
+	return args.Error(0)
 }
 
-func (m *MockAccountRepository) Delete(id string) error {
+func (m *MockAccountRepository) Delete(id uint) error {
 	args := m.Called(id)
 	return args.Error(0)
 }
 
-func (m *MockAccountRepository) UpdateBalance(id string, amount float64) (models.Account, error) {
+func (m *MockAccountRepository) UpdateBalance(id uint, amount float64) error {
 	args := m.Called(id, amount)
-	return args.Get(0).(models.Account), args.Error(1)
+	return args.Error(0)
 }
 
-// MockTransactionRepository implements the TransactionRepository interface for testing
+func (m *MockAccountRepository) FindByIDWithLock(id uint) (*models.Account, repository.GormTx, error) {
+	args := m.Called(id)
+	var account *models.Account
+	
+	if args.Get(0) != nil {
+		account = args.Get(0).(*models.Account)
+	}
+	
+	// Return nil for the DB, as we'll use our MockDB for testing
+	return account, nil, args.Error(2)
+}
+
+// Mock for TransactionRepository
 type MockTransactionRepository struct {
 	mock.Mock
 }
 
-// Ensure MockTransactionRepository implements TransactionRepository interface
-var _ interfaces.TransactionRepository = (*MockTransactionRepository)(nil)
-
-func (m *MockTransactionRepository) Create(transaction models.Transaction) (models.Transaction, error) {
+func (m *MockTransactionRepository) Create(transaction *models.Transaction) error {
 	args := m.Called(transaction)
-	return args.Get(0).(models.Transaction), args.Error(1)
-}
-
-func (m *MockTransactionRepository) FindByID(id string) (models.Transaction, error) {
-	args := m.Called(id)
-	return args.Get(0).(models.Transaction), args.Error(1)
-}
-
-func (m *MockTransactionRepository) FindByAccountID(accountID string) ([]models.Transaction, error) {
-	args := m.Called(accountID)
-	return args.Get(0).([]models.Transaction), args.Error(1)
-}
-
-func (m *MockTransactionRepository) FindAll() ([]models.Transaction, error) {
-	args := m.Called()
-	return args.Get(0).([]models.Transaction), args.Error(1)
-}
-
-func (m *MockTransactionRepository) FindBySourceAccountID(sourceAccountID string) ([]models.Transaction, error) {
-	args := m.Called(sourceAccountID)
-	return args.Get(0).([]models.Transaction), args.Error(1)
-}
-
-func (m *MockTransactionRepository) FindByTargetAccountID(targetAccountID string) ([]models.Transaction, error) {
-	args := m.Called(targetAccountID)
-	return args.Get(0).([]models.Transaction), args.Error(1)
-}
-
-func (m *MockTransactionRepository) CreateTransfer(sourceAccountID, targetAccountID string, amount float64, description string) error {
-	args := m.Called(sourceAccountID, targetAccountID, amount, description)
 	return args.Error(0)
+}
+
+func (m *MockTransactionRepository) CreateWithTx(transaction *models.Transaction, tx repository.GormTx) error {
+	args := m.Called(transaction, tx)
+	return args.Error(0)
+}
+
+func (m *MockTransactionRepository) FindByID(id uint) (*models.Transaction, error) {
+	args := m.Called(id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.Transaction), args.Error(1)
+}
+
+func (m *MockTransactionRepository) FindByAccountID(accountID uint, limit, offset int) ([]models.Transaction, error) {
+	args := m.Called(accountID, limit, offset)
+	return args.Get(0).([]models.Transaction), args.Error(1)
+}
+
+func (m *MockTransactionRepository) FindAll(limit, offset int) ([]models.Transaction, error) {
+	args := m.Called(limit, offset)
+	return args.Get(0).([]models.Transaction), args.Error(1)
+}
+
+func (m *MockTransactionRepository) CountByAccountID(accountID uint) (int64, error) {
+	args := m.Called(accountID)
+	return args.Get(0).(int64), args.Error(1)
+}
+
+func (m *MockTransactionRepository) CountAll() (int64, error) {
+	args := m.Called()
+	return args.Get(0).(int64), args.Error(1)
+}
+
+// MockDBResult implements repository.GormResult
+type MockDBResult struct {
+	Err error
+}
+
+func (m MockDBResult) Error() error {
+	return m.Err
+}
+
+// MockDB for transaction testing
+type MockDB struct {
+	mock.Mock
+}
+
+func (m *MockDB) Save(value interface{}) repository.GormResult {
+	m.Called(value)
+	return MockDBResult{nil}
+}
+
+func (m *MockDB) Create(value interface{}) repository.GormResult {
+	m.Called(value)
+	return MockDBResult{nil}
+}
+
+func (m *MockDB) Commit() repository.GormResult {
+	m.Called()
+	return MockDBResult{nil}
+}
+
+func (m *MockDB) Rollback() repository.GormResult {
+	m.Called()
+	return MockDBResult{nil}
 }

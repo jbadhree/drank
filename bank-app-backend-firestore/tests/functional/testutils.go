@@ -2,109 +2,73 @@ package functional
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
-	"time"
 
-	"cloud.google.com/go/firestore"
-	firebase "firebase.google.com/go/v4"
-	"firebase.google.com/go/v4/auth"
 	"github.com/gin-gonic/gin"
-	"github.com/jbadhree/drank/bank-app-backend-firestore/internal/config"
-	"github.com/jbadhree/drank/bank-app-backend-firestore/internal/handlers"
-	"github.com/jbadhree/drank/bank-app-backend-firestore/internal/middleware"
-	"github.com/jbadhree/drank/bank-app-backend-firestore/internal/models"
-	"github.com/jbadhree/drank/bank-app-backend-firestore/internal/repository"
-	"github.com/jbadhree/drank/bank-app-backend-firestore/internal/services"
-	"google.golang.org/api/option"
+	"github.com/jbadhree/drank/bank-app-backend/internal/config"
+	"github.com/jbadhree/drank/bank-app-backend/internal/handlers"
+	"github.com/jbadhree/drank/bank-app-backend/internal/middleware"
+	"github.com/jbadhree/drank/bank-app-backend/internal/models"
+	"github.com/jbadhree/drank/bank-app-backend/internal/repository"
+	"github.com/jbadhree/drank/bank-app-backend/internal/services"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 var (
-	testFirestoreClient *firestore.Client
-	testAuthClient      *auth.Client
-	testRouter          *gin.Engine
-	testConfig          *config.Config
-	testContext         context.Context
+	testDB     *gorm.DB
+	testRouter *gin.Engine
+	testConfig *config.Config
 )
 
-// SetupTestFirebase initializes Firebase clients for testing
-func SetupTestFirebase(t *testing.T) (*firestore.Client, *auth.Client, error) {
-	ctx := context.Background()
-
-	// Set emulator environment variables if not already set
-	if os.Getenv("FIRESTORE_EMULATOR_HOST") == "" {
-		os.Setenv("FIRESTORE_EMULATOR_HOST", "localhost:8091")
+// SetupTestDB initializes a test database connection
+func SetupTestDB(t *testing.T) (*gorm.DB, error) {
+	// Load test environment variables
+	cfg := config.New()
+	
+	// Use test database settings with different port (5435 for test db)
+	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+		cfg.DBHost, 5435, cfg.DBUser, cfg.DBPassword, cfg.DBName)
+	
+	// Configure the database with minimal logging for tests
+	dbConfig := &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
 	}
-	if os.Getenv("FIREBASE_AUTH_EMULATOR_HOST") == "" {
-		os.Setenv("FIREBASE_AUTH_EMULATOR_HOST", "localhost:9099")
-	}
-
-	// Create Firebase app configuration
-	config := &firebase.Config{
-		ProjectID: "test-project",
-	}
-
-	// Create Firebase app
-	app, err := firebase.NewApp(ctx, config)
+	
+	db, err := gorm.Open(postgres.Open(dsn), dbConfig)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error initializing Firebase app: %v", err)
+		return nil, fmt.Errorf("failed to connect to test database: %v", err)
 	}
-
-	// Get Firebase Auth client
-	authClient, err := app.Auth(ctx)
+	
+	// Auto-migrate the schema for test database
+	err = db.AutoMigrate(&models.User{}, &models.Account{}, &models.Transaction{})
 	if err != nil {
-		return nil, nil, fmt.Errorf("error initializing Firebase Auth client: %v", err)
+		return nil, fmt.Errorf("failed to migrate test database schema: %v", err)
 	}
-
-	// Get Firestore client
-	firestoreClient, err := firestore.NewClient(ctx, "test-project", option.WithoutAuthentication())
-	if err != nil {
-		return nil, nil, fmt.Errorf("error initializing Firestore client: %v", err)
-	}
-
-	return firestoreClient, authClient, nil
+	
+	return db, nil
 }
 
-// CleanupCollection removes all documents from a collection
-func CleanupCollection(client *firestore.Client, collection string) error {
-	ctx := context.Background()
-	iter := client.Collection(collection).Documents(ctx)
-	batch := client.Batch()
-	
-	for {
-		doc, err := iter.Next()
-		if err != nil {
-			break
-		}
-		batch.Delete(doc.Ref)
+// CleanupTestDB drops all test tables
+func CleanupTestDB(db *gorm.DB) error {
+	// Get a generic database object
+	sqlDB, err := db.DB()
+	if err != nil {
+		return err
 	}
 	
-	_, err := batch.Commit(ctx)
-	return err
-}
-
-// CleanupTestFirebase cleans up all collections and closes clients
-func CleanupTestFirebase(firestoreClient *firestore.Client) error {
-	// Clean up collections
-	collections := []string{"users", "accounts", "transactions"}
-	for _, collection := range collections {
-		if err := CleanupCollection(firestoreClient, collection); err != nil {
-			return err
-		}
-	}
-	
-	// Close Firestore client
-	return firestoreClient.Close()
+	// Close the database connection
+	return sqlDB.Close()
 }
 
 // SetupTestRouter creates a router with all the routes for testing
-func SetupTestRouter(firestoreClient *firestore.Client, authClient *auth.Client) *gin.Engine {
+func SetupTestRouter(db *gorm.DB) *gin.Engine {
 	// Set gin to test mode
 	gin.SetMode(gin.TestMode)
 	
@@ -112,9 +76,9 @@ func SetupTestRouter(firestoreClient *firestore.Client, authClient *auth.Client)
 	cfg := config.New()
 	
 	// Initialize repositories
-	userRepo := repository.NewUserRepository(firestoreClient)
-	accountRepo := repository.NewAccountRepository(firestoreClient)
-	transactionRepo := repository.NewTransactionRepository(firestoreClient)
+	userRepo := repository.NewUserRepository(db)
+	accountRepo := repository.NewAccountRepository(db)
+	transactionRepo := repository.NewTransactionRepository(db)
 	
 	// Initialize services
 	userService := services.NewUserService(userRepo)
@@ -138,7 +102,6 @@ func SetupTestRouter(firestoreClient *firestore.Client, authClient *auth.Client)
 	{
 		// Auth routes - no auth required
 		v1.POST("/auth/login", authHandler.Login)
-		v1.POST("/auth/register", authHandler.Register)
 		
 		// User routes - auth required
 		users := v1.Group("/users")
@@ -156,7 +119,6 @@ func SetupTestRouter(firestoreClient *firestore.Client, authClient *auth.Client)
 			accounts.GET("", accountHandler.GetAllAccounts)
 			accounts.GET("/:id", accountHandler.GetAccountByID)
 			accounts.GET("/user/:userId", accountHandler.GetAccountsByUserID)
-			accounts.POST("", accountHandler.CreateAccount)
 		}
 		
 		// Transaction routes - auth required
@@ -167,8 +129,6 @@ func SetupTestRouter(firestoreClient *firestore.Client, authClient *auth.Client)
 			transactions.GET("/:id", transactionHandler.GetTransactionByID)
 			transactions.GET("/account/:accountId", transactionHandler.GetTransactionsByAccountID)
 			transactions.POST("/transfer", transactionHandler.Transfer)
-			transactions.POST("/deposit", transactionHandler.CreateDeposit)
-			transactions.POST("/withdrawal", transactionHandler.CreateWithdrawal)
 		}
 	}
 	
@@ -177,28 +137,21 @@ func SetupTestRouter(firestoreClient *firestore.Client, authClient *auth.Client)
 
 // SetupTest initializes everything for tests
 func SetupTest(t *testing.T) {
-	// Initialize Firebase only once
-	if testFirestoreClient == nil || testAuthClient == nil {
+	// Initialize database only once
+	if testDB == nil {
 		var err error
-		testFirestoreClient, testAuthClient, err = SetupTestFirebase(t)
+		testDB, err = SetupTestDB(t)
 		if err != nil {
-			t.Fatalf("Failed to set up test Firebase: %v", err)
+			t.Fatalf("Failed to set up test database: %v", err)
 		}
-		
-		testContext = context.Background()
 	}
 	
 	// Clean up any existing data
-	collections := []string{"users", "accounts", "transactions"}
-	for _, collection := range collections {
-		if err := CleanupCollection(testFirestoreClient, collection); err != nil {
-			t.Logf("Warning: Failed to clean up collection %s: %v", collection, err)
-		}
-	}
+	testDB.Exec("TRUNCATE users, accounts, transactions RESTART IDENTITY CASCADE")
 	
 	// Initialize router only once
 	if testRouter == nil {
-		testRouter = SetupTestRouter(testFirestoreClient, testAuthClient)
+		testRouter = SetupTestRouter(testDB)
 	}
 	
 	// Initialize config
@@ -232,66 +185,32 @@ func MakeRequest(method, url string, body interface{}, token string) *httptest.R
 }
 
 // CreateTestUser creates a test user for tests
-func CreateTestUser(email, password, firstName, lastName string) (models.User, error) {
-	// Hash the password
-	hashedPassword, err := models.GeneratePasswordHash(password)
-	if err != nil {
-		return models.User{}, err
-	}
-	
-	// Create user
-	user := models.User{
+func CreateTestUser(email, password, firstName, lastName string) (*models.User, error) {
+	user := &models.User{
 		Email:     email,
-		Password:  hashedPassword,
+		Password:  password,
 		FirstName: firstName,
 		LastName:  lastName,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
 	}
 	
-	// Add to Firestore
-	docRef, _, err := testFirestoreClient.Collection("users").Add(testContext, user)
-	if err != nil {
-		return models.User{}, err
-	}
-	
-	// Update the user with the generated ID
-	user.ID = docRef.ID
-	_, err = docRef.Set(testContext, map[string]interface{}{
-		"id": docRef.ID,
-	}, firestore.MergeAll)
-	if err != nil {
-		return models.User{}, err
+	if err := testDB.Create(user).Error; err != nil {
+		return nil, err
 	}
 	
 	return user, nil
 }
 
 // CreateTestAccount creates a test account for tests
-func CreateTestAccount(userID string, accountNumber string, accountType models.AccountType, balance float64) (models.Account, error) {
-	// Create account
-	account := models.Account{
+func CreateTestAccount(userID uint, accountNumber string, accountType models.AccountType, balance float64) (*models.Account, error) {
+	account := &models.Account{
 		UserID:        userID,
 		AccountNumber: accountNumber,
 		AccountType:   accountType,
 		Balance:       balance,
-		CreatedAt:     time.Now(),
-		UpdatedAt:     time.Now(),
 	}
 	
-	// Add to Firestore
-	docRef, _, err := testFirestoreClient.Collection("accounts").Add(testContext, account)
-	if err != nil {
-		return models.Account{}, err
-	}
-	
-	// Update the account with the generated ID
-	account.ID = docRef.ID
-	_, err = docRef.Set(testContext, map[string]interface{}{
-		"id": docRef.ID,
-	}, firestore.MergeAll)
-	if err != nil {
-		return models.Account{}, err
+	if err := testDB.Create(account).Error; err != nil {
+		return nil, err
 	}
 	
 	return account, nil
@@ -312,11 +231,6 @@ func LoginTestUser(email, password string) (string, error) {
 	}
 	
 	if w.Code != http.StatusOK {
-		// Try to get error message
-		var errorResp map[string]string
-		if err := json.Unmarshal(w.Body.Bytes(), &errorResp); err == nil {
-			return "", fmt.Errorf("login failed: %s", errorResp["error"])
-		}
 		return "", fmt.Errorf("login failed with status code: %d", w.Code)
 	}
 	
@@ -325,21 +239,13 @@ func LoginTestUser(email, password string) (string, error) {
 
 // TestMain is the main entry point for tests
 func TestMain(m *testing.M) {
-	// Check if emulators are running
-	if os.Getenv("FIRESTORE_EMULATOR_HOST") == "" && os.Getenv("FIREBASE_AUTH_EMULATOR_HOST") == "" {
-		log.Println("Firebase emulators are not running. Please start them before running the tests.")
-		log.Println("Setting up environment variables for emulators...")
-		os.Setenv("FIRESTORE_EMULATOR_HOST", "localhost:8091")
-		os.Setenv("FIREBASE_AUTH_EMULATOR_HOST", "localhost:9099")
-	}
-	
 	// Run the tests
 	exitCode := m.Run()
 	
 	// Cleanup after all tests
-	if testFirestoreClient != nil {
-		if err := CleanupTestFirebase(testFirestoreClient); err != nil {
-			fmt.Printf("Failed to clean up test Firebase: %v\n", err)
+	if testDB != nil {
+		if err := CleanupTestDB(testDB); err != nil {
+			fmt.Printf("Failed to clean up test database: %v\n", err)
 		}
 	}
 	

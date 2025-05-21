@@ -47,12 +47,12 @@ export const getAccounts = async (): Promise<Account[]> => {
   return response.data;
 };
 
-export const getAccountByID = async (id: number): Promise<Account> => {
+export const getAccountByID = async (id: string): Promise<Account> => {
   const response = await api.get<Account>(`/accounts/${id}`);
   return response.data;
 };
 
-export const getAccountsByUserID = async (userId: number): Promise<Account[]> => {
+export const getAccountsByUserID = async (userId: string): Promise<Account[]> => {
   const response = await api.get<Account[]>(`/accounts/user/${userId}`);
   return response.data;
 };
@@ -62,7 +62,7 @@ export const getTransactions = async (): Promise<Transaction[]> => {
   return response.data;
 };
 
-export const getTransactionsByAccountID = async (accountId: number): Promise<Transaction[]> => {
+export const getTransactionsByAccountID = async (accountId: string): Promise<Transaction[]> => {
   const response = await api.get<Transaction[]>(`/transactions/account/${accountId}`);
   return response.data;
 };

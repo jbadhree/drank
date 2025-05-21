@@ -11,15 +11,16 @@ const (
 	Savings  AccountType = "SAVINGS"
 )
 
-// Account - Account model for Firestore
 type Account struct {
-	ID            string      `json:"id" firestore:"id"`
-	UserID        string      `json:"userId" firestore:"userId"`
-	AccountNumber string      `json:"accountNumber" firestore:"accountNumber"`
-	AccountType   AccountType `json:"accountType" firestore:"accountType"`
-	Balance       float64     `json:"balance" firestore:"balance"`
-	CreatedAt     time.Time   `json:"createdAt" firestore:"createdAt"`
-	UpdatedAt     time.Time   `json:"updatedAt" firestore:"updatedAt"`
+	ID            string        `json:"id" firestore:"id"`
+	UserID        string        `json:"userId" firestore:"userId"`
+	AccountNumber string        `json:"accountNumber" firestore:"accountNumber"`
+	AccountType   AccountType   `json:"accountType" firestore:"accountType"`
+	Balance       float64       `json:"balance" firestore:"balance"`
+	Transactions  []Transaction `json:"transactions,omitempty" firestore:"transactions,omitempty"`
+	CreatedAt     time.Time     `json:"createdAt"`
+	UpdatedAt     time.Time     `json:"updatedAt"`
+	DeletedAt     time.Time     `json:"-" firestore:"deletedAt"`
 }
 
 // AccountDTO - Data Transfer Object for Account
