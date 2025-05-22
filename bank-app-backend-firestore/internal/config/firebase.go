@@ -7,7 +7,6 @@ import (
 	"cloud.google.com/go/firestore"
 	firebase "firebase.google.com/go/v4"
 	"firebase.google.com/go/v4/auth"
-	"google.golang.org/api/option"
 )
 
 // FirebaseClient - Firebase client for auth and firestore
@@ -40,7 +39,7 @@ func NewFirebaseClient(cfg *Config) (*FirebaseClient, error) {
 	}
 
 	// Get Firestore client
-	firestoreClient, err := firestore.NewClient(ctx, cfg.FirebaseProjectID, option.WithoutAuthentication())
+	firestoreClient, err := firestore.NewClient(ctx, cfg.FirebaseProjectID)
 	if err != nil {
 		log.Fatalf("Error initializing Firestore client: %v", err)
 		return nil, err

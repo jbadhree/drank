@@ -20,8 +20,8 @@ func New() *Config {
 	
 	return &Config{
 		Port:               port,
-		FirebaseProjectID:  getEnv("FIREBASE_PROJECT_ID", "drank-firebase"),
-		FirestoreEmulator:  getEnv("FIRESTORE_EMULATOR_HOST", "localhost:8090"),
+		FirebaseProjectID:  getEnv("FIREBASE_PROJECT_ID", "seventh-league-405315"),
+		FirestoreEmulator:  getEnv("FIRESTORE_EMULATOR_HOST", "localhost:8091"),
 		AuthEmulator:       getEnv("FIREBASE_AUTH_EMULATOR_HOST", "localhost:9099"),
 		JWTSecret:          getEnv("JWT_SECRET", "your-very-secret-jwt-key-change-in-production"),
 	}
