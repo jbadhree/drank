@@ -17,20 +17,27 @@ import (
 type AccountRepositoryImpl struct {
 	client *firestore.Client
 	ctx    context.Context
+	userID string
 }
 
 // NewAccountRepository - Create a new account repository
-func NewAccountRepository(client *firestore.Client) interfaces.AccountRepository {
+func NewAccountRepository(client *firestore.Client, userID string) interfaces.AccountRepository {
 	return &AccountRepositoryImpl{
 		client: client,
 		ctx:    context.Background(),
+		userID: userID,
 	}
+}
+
+// getCollectionName returns the user-prefixed collection name
+func (r *AccountRepositoryImpl) getCollectionName() string {
+	return r.userID + "_accounts"
 }
 
 // Create - Create a new account
 func (r *AccountRepositoryImpl) Create(account models.Account) (models.Account, error) {
 	// Check if account number already exists
-	query := r.client.Collection("accounts").Where("accountNumber", "==", account.AccountNumber).Limit(1)
+	query := r.client.Collection(r.getCollectionName()).Where("accountNumber", "==", account.AccountNumber).Limit(1)
 	iter := query.Documents(r.ctx)
 	defer iter.Stop()
 
@@ -48,7 +55,7 @@ func (r *AccountRepositoryImpl) Create(account models.Account) (models.Account, 
 	account.UpdatedAt = now
 
 	// Add account to Firestore
-	docRef, _, err := r.client.Collection("accounts").Add(r.ctx, account)
+	docRef, _, err := r.client.Collection(r.getCollectionName()).Add(r.ctx, account)
 	if err != nil {
 		return models.Account{}, err
 	}
@@ -67,7 +74,7 @@ func (r *AccountRepositoryImpl) Create(account models.Account) (models.Account, 
 
 // FindByID - Find account by ID
 func (r *AccountRepositoryImpl) FindByID(id string) (models.Account, error) {
-	docRef := r.client.Collection("accounts").Doc(id)
+	docRef := r.client.Collection(r.getCollectionName()).Doc(id)
 	docSnapshot, err := docRef.Get(r.ctx)
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
@@ -87,7 +94,7 @@ func (r *AccountRepositoryImpl) FindByID(id string) (models.Account, error) {
 
 // FindByAccountNumber - Find account by account number
 func (r *AccountRepositoryImpl) FindByAccountNumber(accountNumber string) (models.Account, error) {
-	query := r.client.Collection("accounts").Where("accountNumber", "==", accountNumber).Limit(1)
+	query := r.client.Collection(r.getCollectionName()).Where("accountNumber", "==", accountNumber).Limit(1)
 	iter := query.Documents(r.ctx)
 	defer iter.Stop()
 
@@ -112,7 +119,7 @@ func (r *AccountRepositoryImpl) FindByAccountNumber(accountNumber string) (model
 func (r *AccountRepositoryImpl) FindByUserID(userID string) ([]models.Account, error) {
 	var accounts []models.Account
 
-	query := r.client.Collection("accounts").Where("userId", "==", userID).OrderBy("createdAt", firestore.Desc)
+	query := r.client.Collection(r.getCollectionName()).Where("userId", "==", userID).OrderBy("createdAt", firestore.Desc)
 	iter := query.Documents(r.ctx)
 	defer iter.Stop()
 
@@ -141,7 +148,7 @@ func (r *AccountRepositoryImpl) FindByUserID(userID string) ([]models.Account, e
 func (r *AccountRepositoryImpl) FindAll() ([]models.Account, error) {
 	var accounts []models.Account
 
-	iter := r.client.Collection("accounts").Documents(r.ctx)
+	iter := r.client.Collection(r.getCollectionName()).Documents(r.ctx)
 	defer iter.Stop()
 
 	for {
@@ -168,7 +175,7 @@ func (r *AccountRepositoryImpl) FindAll() ([]models.Account, error) {
 // Update - Update an account
 func (r *AccountRepositoryImpl) Update(account models.Account) (models.Account, error) {
 	// Check if account exists
-	docRef := r.client.Collection("accounts").Doc(account.ID)
+	docRef := r.client.Collection(r.getCollectionName()).Doc(account.ID)
 	_, err := docRef.Get(r.ctx)
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
@@ -189,7 +196,7 @@ func (r *AccountRepositoryImpl) Update(account models.Account) (models.Account, 
 
 // Delete - Delete an account
 func (r *AccountRepositoryImpl) Delete(id string) error {
-	_, err := r.client.Collection("accounts").Doc(id).Delete(r.ctx)
+	_, err := r.client.Collection(r.getCollectionName()).Doc(id).Delete(r.ctx)
 	if err != nil {
 		return err
 	}
@@ -210,7 +217,7 @@ func (r *AccountRepositoryImpl) UpdateBalance(id string, amount float64) (models
 	account.UpdatedAt = time.Now()
 
 	// Update in database
-	docRef := r.client.Collection("accounts").Doc(id)
+	docRef := r.client.Collection(r.getCollectionName()).Doc(id)
 	_, err = docRef.Set(r.ctx, account)
 	if err != nil {
 		return models.Account{}, err

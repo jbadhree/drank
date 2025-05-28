@@ -61,7 +61,7 @@ func main() {
 	// Check if seed flag is provided
 	if len(os.Args) > 1 && os.Args[1] == "--seed" {
 		log.Println("Seeding database...")
-		if err := seed.SeedDatabase(firebase.Firestore); err != nil {
+		if err := seed.SeedDatabase(firebase.Firestore, cfg.UserID); err != nil {
 			log.Fatalf("Failed to seed database: %v", err)
 		}
 		log.Println("Database seeded successfully")
@@ -69,9 +69,9 @@ func main() {
 	}
 
 	// Initialize repositories
-	userRepo := repository.NewUserRepository(firebase.Firestore)
-	accountRepo := repository.NewAccountRepository(firebase.Firestore)
-	transactionRepo := repository.NewTransactionRepository(firebase.Firestore)
+	userRepo := repository.NewUserRepository(firebase.Firestore, cfg.UserID)
+	accountRepo := repository.NewAccountRepository(firebase.Firestore, cfg.UserID)
+	transactionRepo := repository.NewTransactionRepository(firebase.Firestore, cfg.UserID)
 
 	// Initialize services
 	userService := services.NewUserService(userRepo)

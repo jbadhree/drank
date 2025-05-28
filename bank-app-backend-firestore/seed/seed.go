@@ -12,16 +12,41 @@ import (
 )
 
 // SeedDatabase - Seed the database with initial data
-func SeedDatabase(client *firestore.Client) error {
+func SeedDatabase(client *firestore.Client, userID string) error {
 	ctx := context.Background()
 
+	usersCol := userID + "_users"
+	accountsCol := userID + "_accounts"
+	transactionsCol := userID + "_transactions"
+
+	// Clear existing data in collections before seeding using BulkWriter
+	collections := []string{usersCol, accountsCol, transactionsCol}
+	for _, col := range collections {
+		colRef := client.Collection(col)
+		for {
+			docs, err := colRef.Limit(100).Documents(ctx).GetAll()
+			if err != nil {
+				return err
+			}
+			if len(docs) == 0 {
+				break
+			}
+
+			bulkWriter := client.BulkWriter(ctx)
+			for _, doc := range docs {
+				bulkWriter.Delete(doc.Ref)
+			}
+			bulkWriter.End()
+		}
+	}
+
 	// Check if users collection already has data
-	usersRef := client.Collection("users")
+	usersRef := client.Collection(usersCol)
 	usersDocs, err := usersRef.Limit(1).Documents(ctx).GetAll()
 	if err != nil && status.Code(err) != codes.NotFound {
 		return err
 	}
-	
+
 	// If users collection is not empty, don't seed
 	if len(usersDocs) > 0 {
 		log.Println("Database already seeded, skipping...")
@@ -33,16 +58,16 @@ func SeedDatabase(client *firestore.Client) error {
 	// Create demo users
 	users := []models.User{
 		{
-			Email:     "user1@example.com",
-			Password:  "$2a$10$1JGBZUOPMvmbvnAZWF1mTuc0r3lqMANdLl0qQ2pZj5.vcnUo4q0qK", // Password: password1
+			Email:     "john.doe@example.com",
+			Password:  "password123",
 			FirstName: "John",
 			LastName:  "Doe",
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		},
 		{
-			Email:     "user2@example.com",
-			Password:  "$2a$10$1JGBZUOPMvmbvnAZWF1mTuc0r3lqMANdLl0qQ2pZj5.vcnUo4q0qK", // Password: password1
+			Email:     "jane.smith@example.com",
+			Password:  "password123",
 			FirstName: "Jane",
 			LastName:  "Smith",
 			CreatedAt: time.Now(),
@@ -50,24 +75,28 @@ func SeedDatabase(client *firestore.Client) error {
 		},
 	}
 
-	// Create users in batch
-	batch := client.Batch()
+	// Encrypt passwords before inserting users
+	for i, user := range users {
+		hashed, err := models.GeneratePasswordHash(user.Password)
+		if err != nil {
+			return err
+		}
+		users[i].Password = hashed
+	}
+
+	// Create users in batch using BulkWriter
+	bulkWriter := client.BulkWriter(ctx)
 	userIDs := make([]string, len(users))
 
 	for i, user := range users {
-		userRef := client.Collection("users").NewDoc()
+		userRef := client.Collection(usersCol).NewDoc()
 		userIDs[i] = userRef.ID
 		user.ID = userRef.ID
-		batch.Set(userRef, user)
+		bulkWriter.Set(userRef, user)
 	}
+	bulkWriter.End()
 
-	// Execute the batch
-	_, err = batch.Commit(ctx)
-	if err != nil {
-		return err
-	}
-
-	// Create accounts for the users
+	// Create accounts for the users using BulkWriter
 	accounts := []models.Account{
 		{
 			UserID:        userIDs[0],
@@ -94,25 +123,18 @@ func SeedDatabase(client *firestore.Client) error {
 			UpdatedAt:     time.Now(),
 		},
 	}
-
-	// Create accounts in batch
-	batch = client.Batch()
+	bulkWriter = client.BulkWriter(ctx)
 	accountIDs := make([]string, len(accounts))
 
 	for i, account := range accounts {
-		accountRef := client.Collection("accounts").NewDoc()
+		accountRef := client.Collection(accountsCol).NewDoc()
 		accountIDs[i] = accountRef.ID
 		account.ID = accountRef.ID
-		batch.Set(accountRef, account)
+		bulkWriter.Set(accountRef, account)
 	}
+	bulkWriter.End()
 
-	// Execute the batch
-	_, err = batch.Commit(ctx)
-	if err != nil {
-		return err
-	}
-
-	// Create some sample transactions
+	// Create some sample transactions using BulkWriter
 	now := time.Now()
 	yesterday := now.Add(-24 * time.Hour)
 	lastWeek := now.Add(-7 * 24 * time.Hour)
@@ -169,21 +191,14 @@ func SeedDatabase(client *firestore.Client) error {
 			UpdatedAt:       yesterday,
 		},
 	}
-
-	// Create transactions in batch
-	batch = client.Batch()
+	bulkWriter = client.BulkWriter(ctx)
 
 	for _, transaction := range transactions {
-		transactionRef := client.Collection("transactions").NewDoc()
+		transactionRef := client.Collection(transactionsCol).NewDoc()
 		transaction.ID = transactionRef.ID
-		batch.Set(transactionRef, transaction)
+		bulkWriter.Set(transactionRef, transaction)
 	}
-
-	// Execute the batch
-	_, err = batch.Commit(ctx)
-	if err != nil {
-		return err
-	}
+	bulkWriter.End()
 
 	log.Println("Database seeded successfully!")
 	return nil

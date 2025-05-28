@@ -17,14 +17,21 @@ import (
 type TransactionRepositoryImpl struct {
 	client *firestore.Client
 	ctx    context.Context
+	userID string
 }
 
 // NewTransactionRepository - Create a new transaction repository
-func NewTransactionRepository(client *firestore.Client) interfaces.TransactionRepository {
+func NewTransactionRepository(client *firestore.Client, userID string) interfaces.TransactionRepository {
 	return &TransactionRepositoryImpl{
 		client: client,
 		ctx:    context.Background(),
+		userID: userID,
 	}
+}
+
+// getCollectionName returns the user-prefixed collection name
+func (r *TransactionRepositoryImpl) getCollectionName() string {
+	return r.userID + "_transactions"
 }
 
 // Create - Create a new transaction
@@ -33,13 +40,13 @@ func (r *TransactionRepositoryImpl) Create(transaction models.Transaction) (mode
 	now := time.Now()
 	transaction.CreatedAt = now
 	transaction.UpdatedAt = now
-	
+
 	if transaction.TransactionDate.IsZero() {
 		transaction.TransactionDate = now
 	}
 
 	// Add transaction to Firestore
-	docRef, _, err := r.client.Collection("transactions").Add(r.ctx, transaction)
+	docRef, _, err := r.client.Collection(r.getCollectionName()).Add(r.ctx, transaction)
 	if err != nil {
 		return models.Transaction{}, err
 	}
@@ -58,7 +65,7 @@ func (r *TransactionRepositoryImpl) Create(transaction models.Transaction) (mode
 
 // FindByID - Find transaction by ID
 func (r *TransactionRepositoryImpl) FindByID(id string) (models.Transaction, error) {
-	docRef := r.client.Collection("transactions").Doc(id)
+	docRef := r.client.Collection(r.getCollectionName()).Doc(id)
 	docSnapshot, err := docRef.Get(r.ctx)
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
@@ -80,7 +87,7 @@ func (r *TransactionRepositoryImpl) FindByID(id string) (models.Transaction, err
 func (r *TransactionRepositoryImpl) FindByAccountID(accountID string) ([]models.Transaction, error) {
 	var transactions []models.Transaction
 
-	query := r.client.Collection("transactions").Where("accountId", "==", accountID).OrderBy("transactionDate", firestore.Desc)
+	query := r.client.Collection(r.getCollectionName()).Where("accountId", "==", accountID).OrderBy("transactionDate", firestore.Desc)
 	iter := query.Documents(r.ctx)
 	defer iter.Stop()
 
@@ -109,7 +116,7 @@ func (r *TransactionRepositoryImpl) FindByAccountID(accountID string) ([]models.
 func (r *TransactionRepositoryImpl) FindAll() ([]models.Transaction, error) {
 	var transactions []models.Transaction
 
-	iter := r.client.Collection("transactions").OrderBy("transactionDate", firestore.Desc).Documents(r.ctx)
+	iter := r.client.Collection(r.getCollectionName()).OrderBy("transactionDate", firestore.Desc).Documents(r.ctx)
 	defer iter.Stop()
 
 	for {
@@ -137,7 +144,7 @@ func (r *TransactionRepositoryImpl) FindAll() ([]models.Transaction, error) {
 func (r *TransactionRepositoryImpl) FindBySourceAccountID(sourceAccountID string) ([]models.Transaction, error) {
 	var transactions []models.Transaction
 
-	query := r.client.Collection("transactions").Where("sourceAccountId", "==", sourceAccountID).OrderBy("transactionDate", firestore.Desc)
+	query := r.client.Collection(r.getCollectionName()).Where("sourceAccountId", "==", sourceAccountID).OrderBy("transactionDate", firestore.Desc)
 	iter := query.Documents(r.ctx)
 	defer iter.Stop()
 
@@ -166,7 +173,7 @@ func (r *TransactionRepositoryImpl) FindBySourceAccountID(sourceAccountID string
 func (r *TransactionRepositoryImpl) FindByTargetAccountID(targetAccountID string) ([]models.Transaction, error) {
 	var transactions []models.Transaction
 
-	query := r.client.Collection("transactions").Where("targetAccountId", "==", targetAccountID).OrderBy("transactionDate", firestore.Desc)
+	query := r.client.Collection(r.getCollectionName()).Where("targetAccountId", "==", targetAccountID).OrderBy("transactionDate", firestore.Desc)
 	iter := query.Documents(r.ctx)
 	defer iter.Stop()
 
@@ -193,10 +200,9 @@ func (r *TransactionRepositoryImpl) FindByTargetAccountID(targetAccountID string
 
 // CreateTransfer - Create a transfer transaction between two accounts using Firestore transaction
 func (r *TransactionRepositoryImpl) CreateTransfer(sourceAccountID, targetAccountID string, amount float64, description string) error {
-	// Create a reference to both accounts
-	sourceAccountRef := r.client.Collection("accounts").Doc(sourceAccountID)
-	targetAccountRef := r.client.Collection("accounts").Doc(targetAccountID)
-	
+	sourceAccountRef := r.client.Collection(r.userID + "_accounts").Doc(sourceAccountID)
+	targetAccountRef := r.client.Collection(r.userID + "_accounts").Doc(targetAccountID)
+
 	// Use a Firestore transaction for atomic operation
 	return r.client.RunTransaction(r.ctx, func(ctx context.Context, tx *firestore.Transaction) error {
 		// Get source account
@@ -208,7 +214,7 @@ func (r *TransactionRepositoryImpl) CreateTransfer(sourceAccountID, targetAccoun
 		if err := sourceAccountDoc.DataTo(&sourceAccount); err != nil {
 			return err
 		}
-		
+
 		// Get target account
 		targetAccountDoc, err := tx.Get(targetAccountRef)
 		if err != nil {
@@ -218,21 +224,21 @@ func (r *TransactionRepositoryImpl) CreateTransfer(sourceAccountID, targetAccoun
 		if err := targetAccountDoc.DataTo(&targetAccount); err != nil {
 			return err
 		}
-		
+
 		// Check if source account has enough balance
 		if sourceAccount.Balance < amount {
 			return errors.New("insufficient balance in source account")
 		}
-		
+
 		// Update account balances
 		now := time.Now()
 		sourceAccount.Balance -= amount
 		sourceAccount.UpdatedAt = now
 		targetAccount.Balance += amount
 		targetAccount.UpdatedAt = now
-		
+
 		// Create source account transaction (withdrawal)
-		sourceTransactionRef := r.client.Collection("transactions").NewDoc()
+		sourceTransactionRef := r.client.Collection(r.getCollectionName()).NewDoc()
 		sourceTransaction := models.Transaction{
 			ID:              sourceTransactionRef.ID,
 			AccountID:       sourceAccountID,
@@ -246,9 +252,9 @@ func (r *TransactionRepositoryImpl) CreateTransfer(sourceAccountID, targetAccoun
 			CreatedAt:       now,
 			UpdatedAt:       now,
 		}
-		
+
 		// Create target account transaction (deposit)
-		targetTransactionRef := r.client.Collection("transactions").NewDoc()
+		targetTransactionRef := r.client.Collection(r.getCollectionName()).NewDoc()
 		targetTransaction := models.Transaction{
 			ID:              targetTransactionRef.ID,
 			AccountID:       targetAccountID,
@@ -262,13 +268,13 @@ func (r *TransactionRepositoryImpl) CreateTransfer(sourceAccountID, targetAccoun
 			CreatedAt:       now,
 			UpdatedAt:       now,
 		}
-		
+
 		// Update accounts and create transactions in the transaction
 		tx.Set(sourceAccountRef, sourceAccount)
 		tx.Set(targetAccountRef, targetAccount)
 		tx.Set(sourceTransactionRef, sourceTransaction)
 		tx.Set(targetTransactionRef, targetTransaction)
-		
+
 		return nil
 	})
 }
