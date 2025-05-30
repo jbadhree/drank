@@ -17,20 +17,27 @@ import (
 type UserRepositoryImpl struct {
 	client *firestore.Client
 	ctx    context.Context
+	userID string
 }
 
 // NewUserRepository - Create a new user repository
-func NewUserRepository(client *firestore.Client) interfaces.UserRepository {
+func NewUserRepository(client *firestore.Client, userID string) interfaces.UserRepository {
 	return &UserRepositoryImpl{
 		client: client,
 		ctx:    context.Background(),
+		userID: userID,
 	}
+}
+
+// getCollectionName returns the user-prefixed collection name
+func (r *UserRepositoryImpl) getCollectionName() string {
+	return r.userID + "_users"
 }
 
 // Create - Create a new user
 func (r *UserRepositoryImpl) Create(user models.User) (models.User, error) {
 	// Check if user already exists
-	query := r.client.Collection("users").Where("email", "==", user.Email).Limit(1)
+	query := r.client.Collection(r.getCollectionName()).Where("email", "==", user.Email).Limit(1)
 	iter := query.Documents(r.ctx)
 	defer iter.Stop()
 
@@ -48,7 +55,7 @@ func (r *UserRepositoryImpl) Create(user models.User) (models.User, error) {
 	user.UpdatedAt = now
 
 	// Add user to Firestore
-	docRef, _, err := r.client.Collection("users").Add(r.ctx, user)
+	docRef, _, err := r.client.Collection(r.getCollectionName()).Add(r.ctx, user)
 	if err != nil {
 		return models.User{}, err
 	}
@@ -67,7 +74,7 @@ func (r *UserRepositoryImpl) Create(user models.User) (models.User, error) {
 
 // FindByID - Find user by ID
 func (r *UserRepositoryImpl) FindByID(id string) (models.User, error) {
-	docRef := r.client.Collection("users").Doc(id)
+	docRef := r.client.Collection(r.getCollectionName()).Doc(id)
 	docSnapshot, err := docRef.Get(r.ctx)
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
@@ -87,7 +94,7 @@ func (r *UserRepositoryImpl) FindByID(id string) (models.User, error) {
 
 // FindByEmail - Find user by email
 func (r *UserRepositoryImpl) FindByEmail(email string) (models.User, error) {
-	query := r.client.Collection("users").Where("email", "==", email).Limit(1)
+	query := r.client.Collection(r.getCollectionName()).Where("email", "==", email).Limit(1)
 	iter := query.Documents(r.ctx)
 	defer iter.Stop()
 
@@ -112,7 +119,7 @@ func (r *UserRepositoryImpl) FindByEmail(email string) (models.User, error) {
 func (r *UserRepositoryImpl) FindAll() ([]models.User, error) {
 	var users []models.User
 
-	iter := r.client.Collection("users").Documents(r.ctx)
+	iter := r.client.Collection(r.getCollectionName()).Documents(r.ctx)
 	defer iter.Stop()
 
 	for {
@@ -139,7 +146,7 @@ func (r *UserRepositoryImpl) FindAll() ([]models.User, error) {
 // Update - Update a user
 func (r *UserRepositoryImpl) Update(user models.User) (models.User, error) {
 	// Check if user exists
-	docRef := r.client.Collection("users").Doc(user.ID)
+	docRef := r.client.Collection(r.getCollectionName()).Doc(user.ID)
 	_, err := docRef.Get(r.ctx)
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
@@ -160,7 +167,7 @@ func (r *UserRepositoryImpl) Update(user models.User) (models.User, error) {
 
 // Delete - Delete a user
 func (r *UserRepositoryImpl) Delete(id string) error {
-	_, err := r.client.Collection("users").Doc(id).Delete(r.ctx)
+	_, err := r.client.Collection(r.getCollectionName()).Doc(id).Delete(r.ctx)
 	if err != nil {
 		return err
 	}
